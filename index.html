@@ -7,7 +7,7 @@
     <style>
       body {
         margin: 0;
-        background: linear-gradient(135deg, #1e1b18 0%, #2a2421 100%);
+        background: #121212;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -15,23 +15,27 @@
         color: white;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         user-select: none;
+        transition: background 0.3s ease;
+      }
+      body.light-theme {
+        background: #e0e0e0;
       }
     </style>
   </head>
   <body>
     <script>
       const SAUSAGE_TYPES = [
-        { key: '1_cocktail', name: 'Cocktail', radius: 16, score: 10 },
-        { key: '2_merguez', name: 'Merguez', radius: 24, score: 20 },
-        { key: '3_chipolata', name: 'Chipolata', radius: 32, score: 40 },
-        { key: '4_francfort', name: 'Francfort', radius: 42, score: 80 },
-        { key: '5_diot', name: 'Diot', radius: 54, score: 160 },
-        { key: '6_montbeliard', name: 'Montbéliard', radius: 68, score: 320 },
-        { key: '7_toulouse', name: 'Toulouse', radius: 84, score: 640 },
-        { key: '8_boudin', name: 'Boudin Noir', radius: 102, score: 1280 },
-        { key: '9_morteau', name: 'Morteau', radius: 122, score: 2560 },
-        { key: '10_jesus', name: 'Jésus', radius: 144, score: 5120 },
-        { key: '11_mortadelle', name: 'Mortadelle', radius: 168, score: 10240 },
+        { key: '1_cocktail', name: 'Cocktail', radius: 16, score: 1 },
+        { key: '2_merguez', name: 'Merguez', radius: 24, score: 3 },
+        { key: '3_chipolata', name: 'Chipolata', radius: 32, score: 6 },
+        { key: '4_francfort', name: 'Francfort', radius: 42, score: 10 },
+        { key: '5_diot', name: 'Diot', radius: 54, score: 15 },
+        { key: '6_montbeliard', name: 'Montbéliard', radius: 68, score: 21 },
+        { key: '7_toulouse', name: 'Toulouse', radius: 84, score: 28 },
+        { key: '8_boudin', name: 'Boudin Noir', radius: 102, score: 36 },
+        { key: '9_morteau', name: 'Morteau', radius: 122, score: 45 },
+        { key: '10_jesus', name: 'Jésus', radius: 144, score: 55 },
+        { key: '11_mortadelle', name: 'Mortadelle', radius: 168, score: 66 },
       ];
 
       let currentTypeIndex = 0;
@@ -42,14 +46,17 @@
       let canDrop = true;
       let score = 0;
       let highScore = localStorage.getItem('sausage_high_score') || 0;
-      let scoreText, highScoreText, sausNameText;
+      let scoreText, highScoreText, sausNameText, themeBtnText;
       let gameOver = false;
       let overflowTimer = 0;
+      let isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
       const BOARD_WIDTH = 340;
       const CANVAS_WIDTH = 480;
       const GAME_HEIGHT = 620;
       const GAME_OVER_LINE_Y = 110;
+
+      let bgContainer, uiBg, nextBox;
 
       const config = {
         type: Phaser.AUTO,
@@ -62,7 +69,7 @@
             gravity: { y: 2.0 },
             positionIterations: 10,
             velocityIterations: 10,
-            debug: true, // Désactive (false) une fois validé !
+            debug: false,
           },
         },
         scene: {
@@ -89,33 +96,34 @@
 
         this.matter.world.setBounds(0, 0, BOARD_WIDTH, GAME_HEIGHT, 32, true, true, false, true);
 
-        const bgContainer = this.add.graphics();
-        bgContainer.fillStyle(0x231e1a, 1);
-        bgContainer.fillRect(0, 0, BOARD_WIDTH, GAME_HEIGHT);
+        bgContainer = this.add.graphics();
+        uiBg = this.add.graphics();
+        nextBox = this.add.graphics();
 
-        const uiBg = this.add.graphics();
-        uiBg.fillStyle(0x110e0d, 1);
-        uiBg.fillRect(BOARD_WIDTH, 0, CANVAS_WIDTH - BOARD_WIDTH, GAME_HEIGHT);
-        uiBg.lineStyle(2, 0x3a312b, 1);
-        uiBg.strokeLineShape(new Phaser.Geom.Line(BOARD_WIDTH, 0, BOARD_WIDTH, GAME_HEIGHT));
+        const nextLabel = this.add.text(BOARD_WIDTH + 15, 65, 'SUIVANTE', { fontSize: '12px', fontStyle: 'bold' });
+        const scoreLabel = this.add.text(BOARD_WIDTH + 15, 215, 'SCORE', { fontSize: '12px', fontStyle: 'bold' });
+        scoreText = this.add.text(BOARD_WIDTH + 15, 235, '0', { fontSize: '24px', fontStyle: 'bold' });
 
-        this.add.text(BOARD_WIDTH + 15, 20, 'SUIVANTE', { fontSize: '14px', fill: '#aaa', fontStyle: 'bold' });
+        const highLabel = this.add.text(BOARD_WIDTH + 15, 285, 'MEILLEUR', { fontSize: '12px', fontStyle: 'bold' });
+        highScoreText = this.add.text(BOARD_WIDTH + 15, 305, highScore, { fontSize: '18px' });
 
-        const nextBox = this.add.graphics();
-        nextBox.lineStyle(2, 0x443932, 1);
-        nextBox.strokeRoundedRect(BOARD_WIDTH + 15, 45, 110, 110, 8);
-
-        this.add.text(BOARD_WIDTH + 15, 180, 'SCORE', { fontSize: '14px', fill: '#aaa', fontStyle: 'bold' });
-        scoreText = this.add.text(BOARD_WIDTH + 15, 200, '0', { fontSize: '24px', fill: '#ffca28', fontStyle: 'bold' });
-
-        this.add.text(BOARD_WIDTH + 15, 250, 'MEILLEUR', { fontSize: '14px', fill: '#aaa', fontStyle: 'bold' });
-        highScoreText = this.add.text(BOARD_WIDTH + 15, 270, highScore, { fontSize: '20px', fill: '#ffffff' });
-
-        sausNameText = this.add.text(BOARD_WIDTH + 15, 330, '', {
-          fontSize: '15px',
-          fill: '#ff8a65',
+        sausNameText = this.add.text(BOARD_WIDTH + 15, 360, '', {
+          fontSize: '14px',
           fontStyle: 'bold',
           wordWrap: { width: 110 },
+        });
+
+        themeBtnText = this.add
+          .text(BOARD_WIDTH + 15, 15, ' 🌙 DARK ', {
+            fontSize: '13px',
+            fontStyle: 'bold',
+            padding: { x: 10, y: 6 },
+          })
+          .setInteractive({ useHandCursor: true });
+
+        themeBtnText.on('pointerdown', () => {
+          isDarkMode = !isDarkMode;
+          applyTheme(this, nextLabel, scoreLabel, highLabel);
         });
 
         const line = this.add.graphics();
@@ -124,6 +132,8 @@
         line.y = GAME_OVER_LINE_Y;
 
         aimLine = this.add.graphics();
+
+        applyTheme(this, nextLabel, scoreLabel, highLabel);
 
         nextTypeIndex = getRandomNextIndex();
         spawnNextSausage(this);
@@ -198,12 +208,71 @@
         });
       }
 
+      function applyTheme(scene, nextLabel, scoreLabel, highLabel) {
+        document.body.classList.toggle('light-theme', !isDarkMode);
+
+        const colors = isDarkMode
+          ? {
+              bgBoard: 0x231e1a,
+              uiBg: 0x110e0d,
+              border: 0x3a312b,
+              boxStroke: 0x443932,
+              label: '#888888',
+              scoreText: '#ffca28',
+              highText: '#ffffff',
+              nameText: '#ff8a65',
+              btnBg: '#2a2421',
+              btnText: '#ffffff',
+              btnLabel: ' 🌙 DARK ',
+            }
+          : {
+              bgBoard: 0xf5f2eb,
+              uiBg: 0xe8e2d8,
+              border: 0xc8bfb0,
+              boxStroke: 0xbaa896,
+              label: '#666666',
+              scoreText: '#d84315',
+              highText: '#222222',
+              nameText: '#bf360c',
+              btnBg: '#ffffff',
+              btnText: '#222222',
+              btnLabel: ' ☀️ LIGHT ',
+            };
+
+        bgContainer.clear();
+        bgContainer.fillStyle(colors.bgBoard, 1);
+        bgContainer.fillRect(0, 0, BOARD_WIDTH, GAME_HEIGHT);
+
+        uiBg.clear();
+        uiBg.fillStyle(colors.uiBg, 1);
+        uiBg.fillRect(BOARD_WIDTH, 0, CANVAS_WIDTH - BOARD_WIDTH, GAME_HEIGHT);
+        uiBg.lineStyle(2, colors.border, 1);
+        uiBg.strokeLineShape(new Phaser.Geom.Line(BOARD_WIDTH, 0, BOARD_WIDTH, GAME_HEIGHT));
+
+        nextBox.clear();
+        nextBox.lineStyle(2, colors.boxStroke, 1);
+        nextBox.strokeRoundedRect(BOARD_WIDTH + 15, 85, 110, 110, 8);
+
+        nextLabel.setColor(colors.label);
+        scoreLabel.setColor(colors.label);
+        highLabel.setColor(colors.label);
+
+        scoreText.setColor(colors.scoreText);
+        highScoreText.setColor(colors.highText);
+        sausNameText.setColor(colors.nameText);
+
+        themeBtnText.setText(colors.btnLabel);
+        themeBtnText.setColor(colors.btnText);
+        themeBtnText.setBackgroundColor(colors.btnBg);
+      }
+
       function update(time, delta) {
         if (gameOver) return;
 
         if (canDrop && currentSausageSprite) {
           aimLine.clear();
-          aimLine.lineStyle(1, 0xffffff, 0.4);
+          const lineColor = isDarkMode ? 0xffffff : 0x000000;
+          aimLine.lineStyle(1, lineColor, 0.3);
           const startY = 60 + SAUSAGE_TYPES[currentTypeIndex].radius;
           for (let y = startY; y < GAME_HEIGHT; y += 12) {
             aimLine.lineBetween(currentSausageSprite.x, y, currentSausageSprite.x, y + 6);
@@ -253,7 +322,7 @@
 
         if (nextSausagePreview) nextSausagePreview.destroy();
         const nextInfo = SAUSAGE_TYPES[nextTypeIndex];
-        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70, 100, nextInfo.key);
+        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70, 140, nextInfo.key);
 
         const maxPreviewSize = 80;
         const maxDimension = Math.max(nextSausagePreview.width, nextSausagePreview.height);
@@ -292,7 +361,6 @@
         let sprite;
 
         if (shapeData) {
-          // 1. Créer le sprite Matter avec la forme personnalisée
           sprite = scene.matter.add.sprite(x, y, typeInfo.key, null, {
             shape: shapeData,
             restitution: 0.1,
@@ -301,18 +369,15 @@
             density: 0.003,
           });
 
-          // 2. Récupérer le ratio de taille cible par rapport à l'image PNG d'origine
           const frame = scene.textures.getFrame(typeInfo.key);
           const maxDim = Math.max(frame.width, frame.height);
           const scale = targetSize / maxDim;
 
-          // 3. Appliquer l'échelle uniforme au Sprite ET recalculer les sommets Matter
           sprite.setBody(shapeData, {
             scale: { x: scale, y: scale },
           });
           sprite.setScale(scale);
         } else {
-          // Fallback secours
           const tempTexture = scene.textures.get(typeInfo.key).getSourceImage();
           const aspect = tempTexture.width / tempTexture.height;
 
