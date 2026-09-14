@@ -31,7 +31,7 @@
         { key: '4_francfort', name: 'Francfort', radius: 38, score: 10 },
         { key: '5_diot', name: 'Diot', radius: 48, score: 15 },
         { key: '6_montbeliard', name: 'Montbéliard', radius: 60, score: 21 },
-        { key: '7_toulouse', name: 'Toulouse', radius: 60, score: 28 },
+        { key: '7_toulouse', name: 'Toulouse', radius: 73, score: 28 },
         { key: '8_boudin', name: 'Boudin Noir', radius: 86, score: 36 },
         { key: '9_morteau', name: 'Morteau', radius: 98, score: 45 },
         { key: '10_jesus', name: 'Jésus', radius: 110, score: 55 },
@@ -46,9 +46,11 @@
       let canDrop = true;
       let score = 0;
       let highScore = localStorage.getItem('sausage_high_score') || 0;
-      let scoreText, highScoreText, sausNameText, themeBtnText;
+      let scoreText, highScoreText, sausNameText, themeBtnText, soundBtnText;
       let gameOver = false;
       let overflowTimer = 0;
+      let bgMusic = null;
+      let isMuted = false;
 
       let isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -69,6 +71,10 @@
           default: 'matter',
           matter: {
             gravity: { y: 1.5 },
+            runner: {
+              isFixed: true,
+              fps: 120,
+            },
             positionIterations: 20,
             velocityIterations: 20,
             constraintIterations: 10,
@@ -89,6 +95,9 @@
           this.load.image(type.key, `assets/${type.key}.png`);
         });
         this.load.json('physics_shapes', 'physics.json');
+
+        // Audio de fond libre de droits (boucle style jeux vidéo)
+        this.load.audio('bgm', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3');
       }
 
       function create() {
@@ -99,35 +108,59 @@
 
         this.matter.world.setBounds(0, 0, BOARD_WIDTH, GAME_HEIGHT, 32, true, true, false, true);
 
+        // Gestion de la musique
+        if (!bgMusic) {
+          bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
+        }
+        if (!bgMusic.isPlaying && !isMuted) {
+          this.sound.unlock();
+          bgMusic.play();
+        }
+
         bgContainer = this.add.graphics();
         uiBg = this.add.graphics();
         nextBox = this.add.graphics();
 
-        nextLabel = this.add.text(BOARD_WIDTH + 15, 65, 'SUIVANTE', { fontSize: '12px', fontStyle: 'bold' });
-        scoreLabel = this.add.text(BOARD_WIDTH + 15, 215, 'SCORE', { fontSize: '12px', fontStyle: 'bold' });
-        scoreText = this.add.text(BOARD_WIDTH + 15, 235, '0', { fontSize: '24px', fontStyle: 'bold' });
+        nextLabel = this.add.text(BOARD_WIDTH + 15, 85, 'SUIVANTE', { fontSize: '12px', fontStyle: 'bold' });
+        scoreLabel = this.add.text(BOARD_WIDTH + 15, 235, 'SCORE', { fontSize: '12px', fontStyle: 'bold' });
+        scoreText = this.add.text(BOARD_WIDTH + 15, 255, '0', { fontSize: '24px', fontStyle: 'bold' });
 
-        highLabel = this.add.text(BOARD_WIDTH + 15, 285, 'MEILLEUR', { fontSize: '12px', fontStyle: 'bold' });
-        highScoreText = this.add.text(BOARD_WIDTH + 15, 305, highScore, { fontSize: '18px' });
+        highLabel = this.add.text(BOARD_WIDTH + 15, 305, 'MEILLEUR', { fontSize: '12px', fontStyle: 'bold' });
+        highScoreText = this.add.text(BOARD_WIDTH + 15, 325, highScore, { fontSize: '18px' });
 
-        sausNameLabel = this.add.text(BOARD_WIDTH + 15, 360, 'ACTUELLE', { fontSize: '12px', fontStyle: 'bold' });
         sausNameText = this.add.text(BOARD_WIDTH + 15, 380, '', {
           fontSize: '14px',
           fontStyle: 'bold',
           wordWrap: { width: 110 },
         });
 
+        // Bouton Thème
         themeBtnText = this.add
-          .text(BOARD_WIDTH + 15, 15, '', {
-            fontSize: '13px',
+          .text(BOARD_WIDTH + 15, 12, '', {
+            fontSize: '12px',
             fontStyle: 'bold',
-            padding: { x: 10, y: 6 },
+            padding: { x: 8, y: 5 },
           })
           .setInteractive({ useHandCursor: true });
 
         themeBtnText.on('pointerdown', () => {
           isDarkMode = !isDarkMode;
           applyTheme(this);
+        });
+
+        // Bouton Son (Mute / Unmute)
+        soundBtnText = this.add
+          .text(BOARD_WIDTH + 15, 45, ' 🔊 SON ', {
+            fontSize: '12px',
+            fontStyle: 'bold',
+            padding: { x: 8, y: 5 },
+          })
+          .setInteractive({ useHandCursor: true });
+
+        soundBtnText.on('pointerdown', () => {
+          isMuted = !isMuted;
+          this.sound.mute = isMuted;
+          soundBtnText.setText(isMuted ? ' 🔇 MUET ' : ' 🔊 SON ');
         });
 
         if (window.matchMedia) {
@@ -161,6 +194,11 @@
         this.input.on('pointerdown', (pointer) => {
           if (pointer.x > BOARD_WIDTH || !canDrop || gameOver) return;
 
+          // Assurer le lancement de l'audio si restreint au chargement
+          if (this.sound.context.state === 'suspended') {
+            this.sound.context.resume();
+          }
+
           canDrop = false;
           const dropX = currentSausageSprite.x;
 
@@ -193,7 +231,6 @@
                 parentA.isMarkedForDelete = true;
                 parentB.isMarkedForDelete = true;
 
-                // Cas 1 : Fusion classique vers la saucisse suivante
                 if (currentIndex < SAUSAGE_TYPES.length - 1) {
                   const newX = (parentA.position.x + parentB.position.x) / 2;
                   const newY = (parentA.position.y + parentB.position.y) / 2;
@@ -208,9 +245,7 @@
                   this.time.delayedCall(20, () => {
                     createPhysicsSausage(this, newX, newY, nextIndex);
                   });
-                }
-                // Cas 2 : Deux Mortadelles (dernier niveau) -> Disparition simple + bonus de points
-                else {
+                } else {
                   score += SAUSAGE_TYPES[currentIndex].score * 2;
                   updateScoreDisplay();
 
@@ -275,12 +310,11 @@
 
         nextBox.clear();
         nextBox.lineStyle(2, colors.boxStroke, 1);
-        nextBox.strokeRoundedRect(BOARD_WIDTH + 15, 85, 110, 110, 8);
+        nextBox.strokeRoundedRect(BOARD_WIDTH + 15, 105, 110, 110, 8);
 
         nextLabel.setColor(colors.label);
         scoreLabel.setColor(colors.label);
         highLabel.setColor(colors.label);
-        sausNameLabel.setColor(colors.label);
 
         scoreText.setColor(colors.scoreText);
         highScoreText.setColor(colors.highText);
@@ -289,13 +323,13 @@
         themeBtnText.setText(colors.btnLabel);
         themeBtnText.setColor(colors.btnText);
         themeBtnText.setBackgroundColor(colors.btnBg);
+
+        soundBtnText.setColor(colors.btnText);
+        soundBtnText.setBackgroundColor(colors.btnBg);
       }
 
       function update(time, delta) {
         if (gameOver) return;
-
-        // Forcer Matter.js à exécuter 2 sous-étapes plus précises par frame
-        // this.matter.world.step(delta / 2);
 
         if (canDrop && currentSausageSprite) {
           aimLine.clear();
@@ -344,14 +378,13 @@
       function spawnNextSausage(scene) {
         currentTypeIndex = nextTypeIndex;
         nextTypeIndex = getRandomNextIndex();
-        // nextTypeIndex = 6;
 
         const typeInfo = SAUSAGE_TYPES[currentTypeIndex];
         if (sausNameText) sausNameText.setText(typeInfo.name);
 
         if (nextSausagePreview) nextSausagePreview.destroy();
         const nextInfo = SAUSAGE_TYPES[nextTypeIndex];
-        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70, 140, nextInfo.key);
+        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70, 160, nextInfo.key);
 
         const maxPreviewSize = 80;
         const maxDimension = Math.max(nextSausagePreview.width, nextSausagePreview.height);
@@ -389,23 +422,25 @@
 
         let sprite;
 
+        const commonOptions = {
+          restitution: 0.05,
+          friction: 0.5,
+          frictionStatic: 1.0,
+          density: 0.005,
+          slop: 0.05,
+        };
+
         if (shapeData) {
           sprite = scene.matter.add.sprite(x, y, typeInfo.key, null, {
             shape: shapeData,
-            restitution: 1.05, // Très peu de rebond pour éviter qu'elles ne sautent à l'intérieur d'autres formes
-            friction: 1.0, // Friction augmentée pour stabiliser les contacts
-            frictionStatic: 1.0, // Empêche le glissement forcé
-            density: 10.005, // Une densité constante et un peu plus élevée stabilise les corps lourds
-            slop: 10.05,
+            ...commonOptions,
           });
 
           const frame = scene.textures.getFrame(typeInfo.key);
           const maxDim = Math.max(frame.width, frame.height);
           const scale = targetSize / maxDim;
 
-          sprite.setBody(shapeData, {
-            scale: { x: scale, y: scale },
-          });
+          sprite.setBody(shapeData, { scale: { x: scale, y: scale } });
           sprite.setScale(scale);
         } else {
           const tempTexture = scene.textures.get(typeInfo.key).getSourceImage();
@@ -423,9 +458,7 @@
           const chamferRadius = Math.min(boxWidth, boxHeight) / 2;
           const body = scene.matter.add.rectangle(x, y, boxWidth, boxHeight, {
             chamfer: { radius: chamferRadius },
-            restitution: 0.1,
-            friction: 0.2,
-            density: 0.003,
+            ...commonOptions,
           });
 
           sprite = scene.add.image(x, y, typeInfo.key);
