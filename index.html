@@ -25,7 +25,7 @@
         { key: '2_merguez', name: 'Merguez', radius: 24, score: 20 },
         { key: '3_chipolata', name: 'Chipolata', radius: 32, score: 40 },
         { key: '4_francfort', name: 'Francfort', radius: 42, score: 80 },
-        { key: '5_diot', name: 'Diot', radius: 40, score: 160 },
+        { key: '5_diot', name: 'Diot', radius: 54, score: 160 },
         { key: '6_montbeliard', name: 'Montbéliard', radius: 68, score: 320 },
         { key: '7_toulouse', name: 'Toulouse', radius: 84, score: 640 },
         { key: '8_boudin', name: 'Boudin Noir', radius: 102, score: 1280 },
@@ -59,8 +59,10 @@
         physics: {
           default: 'matter',
           matter: {
-            gravity: { y: 2.2 },
-            debug: true, // Désactive le debug (false) une fois les contours validés !
+            gravity: { y: 2.0 },
+            positionIterations: 10,
+            velocityIterations: 10,
+            debug: true, // Désactive (false) une fois validé !
           },
         },
         scene: {
@@ -73,12 +75,9 @@
       const game = new Phaser.Game(config);
 
       function preload() {
-        // 1. Charger les images
         SAUSAGE_TYPES.forEach((type) => {
           this.load.image(type.key, `assets/${type.key}.png`);
         });
-
-        // 2. Charger le fichier de hitboxes personnalisées
         this.load.json('physics_shapes', 'physics.json');
       }
 
@@ -162,7 +161,6 @@
             const bodyA = pair.bodyA;
             const bodyB = pair.bodyB;
 
-            // Remonter au corps parent si Matter.js a décomposé le polygone en plusieurs parties
             const parentA = bodyA.parent || bodyA;
             const parentB = bodyB.parent || bodyB;
 
@@ -190,7 +188,7 @@
                   destroySausageBody(this, parentA);
                   destroySausageBody(this, parentB);
 
-                  this.time.delayedCall(15, () => {
+                  this.time.delayedCall(20, () => {
                     createPhysicsSausage(this, newX, newY, nextIndex);
                   });
                 }
@@ -288,31 +286,61 @@
         const typeInfo = SAUSAGE_TYPES[typeIndex];
         const targetSize = typeInfo.radius * 2;
 
-        // Récupérer le dictionnaire de formes du fichier JSON
         const shapes = scene.cache.json.get('physics_shapes');
         const shapeData = shapes ? shapes[typeInfo.key] : null;
 
         let sprite;
 
         if (shapeData) {
-          // Création du sprite avec le contour exact issu de physics.json
+          // 1. Créer le sprite Matter avec la forme personnalisée
           sprite = scene.matter.add.sprite(x, y, typeInfo.key, null, {
             shape: shapeData,
-            restitution: 0.15,
-            friction: 0.08,
-            density: 0.002,
+            restitution: 0.1,
+            friction: 0.2,
+            frictionStatic: 0.8,
+            density: 0.003,
           });
+
+          // 2. Récupérer le ratio de taille cible par rapport à l'image PNG d'origine
+          const frame = scene.textures.getFrame(typeInfo.key);
+          const maxDim = Math.max(frame.width, frame.height);
+          const scale = targetSize / maxDim;
+
+          // 3. Appliquer l'échelle uniforme au Sprite ET recalculer les sommets Matter
+          sprite.setBody(shapeData, {
+            scale: { x: scale, y: scale },
+          });
+          sprite.setScale(scale);
         } else {
-          // Fallback secours si la clé n'existe pas dans physics.json
-          sprite = scene.matter.add.sprite(x, y, typeInfo.key);
+          // Fallback secours
+          const tempTexture = scene.textures.get(typeInfo.key).getSourceImage();
+          const aspect = tempTexture.width / tempTexture.height;
+
+          let boxWidth, boxHeight;
+          if (aspect >= 1) {
+            boxWidth = targetSize;
+            boxHeight = targetSize / aspect;
+          } else {
+            boxHeight = targetSize;
+            boxWidth = targetSize * aspect;
+          }
+
+          const chamferRadius = Math.min(boxWidth, boxHeight) / 2;
+          const body = scene.matter.add.rectangle(x, y, boxWidth, boxHeight, {
+            chamfer: { radius: chamferRadius },
+            restitution: 0.1,
+            friction: 0.2,
+            density: 0.003,
+          });
+
+          sprite = scene.add.image(x, y, typeInfo.key);
+          sprite.setDisplaySize(boxWidth, boxHeight);
+          body.gameObject = sprite;
+
+          body.sausageTypeIndex = typeIndex;
+          return body;
         }
 
-        // Mise à l'échelle du sprite et de sa hitbox
-        const maxDim = Math.max(sprite.width, sprite.height);
-        const scale = targetSize / maxDim;
-        sprite.setScale(scale);
-
-        // Attacher l'index du type de saucisse au corps physique Matter.js
         sprite.body.sausageTypeIndex = typeIndex;
         sprite.body.gameObject = sprite;
 
