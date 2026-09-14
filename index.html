@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Suika Sausage Game - Édition Sprites</title>
+    <title>Suika Sausage Game - Precise Physics</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
       body {
@@ -21,17 +21,17 @@
   <body>
     <script>
       const SAUSAGE_TYPES = [
-        { key: '1_cocktail', name: 'Cocktail', radius: 14, score: 10 },
-        { key: '2_merguez', name: 'Merguez', radius: 20, score: 20 },
-        { key: '3_chipolata', name: 'Chipolata', radius: 27, score: 40 },
-        { key: '4_francfort', name: 'Francfort', radius: 35, score: 80 },
-        { key: '5_diot', name: 'Diot', radius: 45, score: 160 },
-        { key: '6_montbeliard', name: 'Montbéliard', radius: 57, score: 320 },
-        { key: '7_toulouse', name: 'Toulouse', radius: 71, score: 640 },
-        { key: '8_boudin', name: 'Boudin Noir', radius: 87, score: 1280 },
-        { key: '9_morteau', name: 'Morteau', radius: 104, score: 2560 },
-        { key: '10_jesus', name: 'Jésus', radius: 124, score: 5120 },
-        { key: '11_mortadelle', name: 'Mortadelle', radius: 148, score: 10240 },
+        { key: '1_cocktail', name: 'Cocktail', radius: 16, score: 10 },
+        { key: '2_merguez', name: 'Merguez', radius: 24, score: 20 },
+        { key: '3_chipolata', name: 'Chipolata', radius: 32, score: 40 },
+        { key: '4_francfort', name: 'Francfort', radius: 42, score: 80 },
+        { key: '5_diot', name: 'Diot', radius: 40, score: 160 },
+        { key: '6_montbeliard', name: 'Montbéliard', radius: 68, score: 320 },
+        { key: '7_toulouse', name: 'Toulouse', radius: 84, score: 640 },
+        { key: '8_boudin', name: 'Boudin Noir', radius: 102, score: 1280 },
+        { key: '9_morteau', name: 'Morteau', radius: 122, score: 2560 },
+        { key: '10_jesus', name: 'Jésus', radius: 144, score: 5120 },
+        { key: '11_mortadelle', name: 'Mortadelle', radius: 168, score: 10240 },
       ];
 
       let currentTypeIndex = 0;
@@ -60,7 +60,7 @@
           default: 'matter',
           matter: {
             gravity: { y: 2.2 },
-            debug: false, // Passe à true si tu veux vérifier l'alignement de la hitbox !
+            debug: true, // Désactive le debug (false) une fois les contours validés !
           },
         },
         scene: {
@@ -73,10 +73,13 @@
       const game = new Phaser.Game(config);
 
       function preload() {
-        // Chargement automatique des 11 visuels PNG
+        // 1. Charger les images
         SAUSAGE_TYPES.forEach((type) => {
           this.load.image(type.key, `assets/${type.key}.png`);
         });
+
+        // 2. Charger le fichier de hitboxes personnalisées
+        this.load.json('physics_shapes', 'physics.json');
       }
 
       function create() {
@@ -85,15 +88,12 @@
         score = 0;
         overflowTimer = 0;
 
-        // 1. Limites du récipient
         this.matter.world.setBounds(0, 0, BOARD_WIDTH, GAME_HEIGHT, 32, true, true, false, true);
 
-        // 2. Décoration du fond
         const bgContainer = this.add.graphics();
         bgContainer.fillStyle(0x231e1a, 1);
         bgContainer.fillRect(0, 0, BOARD_WIDTH, GAME_HEIGHT);
 
-        // 3. Panneau UI Latéral
         const uiBg = this.add.graphics();
         uiBg.fillStyle(0x110e0d, 1);
         uiBg.fillRect(BOARD_WIDTH, 0, CANVAS_WIDTH - BOARD_WIDTH, GAME_HEIGHT);
@@ -119,20 +119,16 @@
           wordWrap: { width: 110 },
         });
 
-        // 4. Ligne de limite Game Over
         const line = this.add.graphics();
         line.lineStyle(2, 0xff3333, 0.6);
         line.lineTo(BOARD_WIDTH, 0);
         line.y = GAME_OVER_LINE_Y;
 
-        // 5. Ligne de visée
         aimLine = this.add.graphics();
 
-        // 6. Démarrage de la boucle de jeu
         nextTypeIndex = getRandomNextIndex();
         spawnNextSausage(this);
 
-        // 7. Suivi du curseur
         this.input.on('pointermove', (pointer) => {
           if (canDrop && currentSausageSprite && !gameOver) {
             const currentRadius = SAUSAGE_TYPES[currentTypeIndex].radius;
@@ -142,26 +138,16 @@
           }
         });
 
-        // 8. Lâcher de la saucisse
         this.input.on('pointerdown', (pointer) => {
           if (pointer.x > BOARD_WIDTH || !canDrop || gameOver) return;
 
           canDrop = false;
           const dropX = currentSausageSprite.x;
-          const typeInfo = SAUSAGE_TYPES[currentTypeIndex];
 
           currentSausageSprite.destroy();
           aimLine.clear();
 
-          // Corps physique
-          const body = this.matter.add.circle(dropX, 60, typeInfo.radius, {
-            restitution: 0.15,
-            friction: 0.05,
-            density: 0.002,
-          });
-
-          body.sausageTypeIndex = currentTypeIndex;
-          createPhysicsSausage(this, body, typeInfo);
+          createPhysicsSausage(this, dropX, 60, currentTypeIndex);
 
           this.time.delayedCall(450, () => {
             if (!gameOver) {
@@ -171,23 +157,26 @@
           });
         });
 
-        // 9. Collisions & Fusion
         this.matter.world.on('collisionstart', (event) => {
           event.pairs.forEach((pair) => {
             const bodyA = pair.bodyA;
             const bodyB = pair.bodyB;
 
-            if (bodyA.sausageTypeIndex !== undefined && bodyB.sausageTypeIndex !== undefined) {
-              if (bodyA.sausageTypeIndex === bodyB.sausageTypeIndex) {
-                const currentIndex = bodyA.sausageTypeIndex;
+            // Remonter au corps parent si Matter.js a décomposé le polygone en plusieurs parties
+            const parentA = bodyA.parent || bodyA;
+            const parentB = bodyB.parent || bodyB;
+
+            if (parentA.sausageTypeIndex !== undefined && parentB.sausageTypeIndex !== undefined) {
+              if (parentA.sausageTypeIndex === parentB.sausageTypeIndex) {
+                const currentIndex = parentA.sausageTypeIndex;
 
                 if (currentIndex < SAUSAGE_TYPES.length - 1) {
-                  if (bodyA.isMarkedForDelete || bodyB.isMarkedForDelete) return;
-                  bodyA.isMarkedForDelete = true;
-                  bodyB.isMarkedForDelete = true;
+                  if (parentA.isMarkedForDelete || parentB.isMarkedForDelete) return;
+                  parentA.isMarkedForDelete = true;
+                  parentB.isMarkedForDelete = true;
 
-                  const newX = (bodyA.position.x + bodyB.position.x) / 2;
-                  const newY = (bodyA.position.y + bodyB.position.y) / 2;
+                  const newX = (parentA.position.x + parentB.position.x) / 2;
+                  const newY = (parentA.position.y + parentB.position.y) / 2;
                   const nextIndex = currentIndex + 1;
 
                   score += SAUSAGE_TYPES[nextIndex].score;
@@ -198,11 +187,11 @@
                     localStorage.setItem('sausage_high_score', highScore);
                   }
 
-                  destroySausageBody(this, bodyA);
-                  destroySausageBody(this, bodyB);
+                  destroySausageBody(this, parentA);
+                  destroySausageBody(this, parentB);
 
                   this.time.delayedCall(15, () => {
-                    spawnMergedSausage(this, newX, newY, nextIndex);
+                    createPhysicsSausage(this, newX, newY, nextIndex);
                   });
                 }
               }
@@ -214,7 +203,6 @@
       function update(time, delta) {
         if (gameOver) return;
 
-        // A. Ligne pointillée
         if (canDrop && currentSausageSprite) {
           aimLine.clear();
           aimLine.lineStyle(1, 0xffffff, 0.4);
@@ -224,7 +212,6 @@
           }
         }
 
-        // B. Synchroniser les sprites PNG avec les corps physiques
         const bodies = this.matter.world.getAllBodies();
         let isOverflowing = false;
 
@@ -266,21 +253,15 @@
         const typeInfo = SAUSAGE_TYPES[currentTypeIndex];
         if (sausNameText) sausNameText.setText(typeInfo.name);
 
-        // Prévisualisation UI
         if (nextSausagePreview) nextSausagePreview.destroy();
         const nextInfo = SAUSAGE_TYPES[nextTypeIndex];
         nextSausagePreview = scene.add.image(BOARD_WIDTH + 70, 100, nextInfo.key);
 
-        // Scale de l'aperçu dans le cadre
         const maxPreviewSize = 80;
-        const previewScale = Math.min(
-          maxPreviewSize / nextSausagePreview.width,
-          maxPreviewSize / nextSausagePreview.height,
-        );
-        nextSausagePreview.setScale(previewScale);
+        const maxDimension = Math.max(nextSausagePreview.width, nextSausagePreview.height);
+        nextSausagePreview.setScale(maxPreviewSize / maxDimension);
 
-        // Sprite sous le curseur
-        currentSausageSprite = createSausageSprite(scene, typeInfo);
+        currentSausageSprite = createPreviewSprite(scene, typeInfo);
 
         const pointer = scene.input.activePointer;
         const currentRadius = typeInfo.radius;
@@ -295,39 +276,55 @@
         currentSausageSprite.y = 60;
       }
 
-      function createSausageSprite(scene, typeInfo) {
+      function createPreviewSprite(scene, typeInfo) {
         const sprite = scene.add.image(0, 0, typeInfo.key);
-
-        // Ajuster le scale du sprite PNG par rapport au diamètre cible
-        const targetDiameter = typeInfo.radius * 2;
-        const scale = Math.max(targetDiameter / sprite.width, targetDiameter / sprite.height);
-        sprite.setScale(scale);
-
+        const targetSize = typeInfo.radius * 2;
+        const maxDim = Math.max(sprite.width, sprite.height);
+        sprite.setScale(targetSize / maxDim);
         return sprite;
       }
 
-      function createPhysicsSausage(scene, body, typeInfo) {
-        const sprite = createSausageSprite(scene, typeInfo);
-        body.gameObject = sprite;
+      function createPhysicsSausage(scene, x, y, typeIndex) {
+        const typeInfo = SAUSAGE_TYPES[typeIndex];
+        const targetSize = typeInfo.radius * 2;
+
+        // Récupérer le dictionnaire de formes du fichier JSON
+        const shapes = scene.cache.json.get('physics_shapes');
+        const shapeData = shapes ? shapes[typeInfo.key] : null;
+
+        let sprite;
+
+        if (shapeData) {
+          // Création du sprite avec le contour exact issu de physics.json
+          sprite = scene.matter.add.sprite(x, y, typeInfo.key, null, {
+            shape: shapeData,
+            restitution: 0.15,
+            friction: 0.08,
+            density: 0.002,
+          });
+        } else {
+          // Fallback secours si la clé n'existe pas dans physics.json
+          sprite = scene.matter.add.sprite(x, y, typeInfo.key);
+        }
+
+        // Mise à l'échelle du sprite et de sa hitbox
+        const maxDim = Math.max(sprite.width, sprite.height);
+        const scale = targetSize / maxDim;
+        sprite.setScale(scale);
+
+        // Attacher l'index du type de saucisse au corps physique Matter.js
+        sprite.body.sausageTypeIndex = typeIndex;
+        sprite.body.gameObject = sprite;
+
+        return sprite.body;
       }
 
       function destroySausageBody(scene, body) {
-        if (body.gameObject) {
-          body.gameObject.destroy();
-          body.gameObject = null;
+        const gameObject = body.gameObject || (body.parent ? body.parent.gameObject : null);
+        if (gameObject) {
+          gameObject.destroy();
         }
         scene.matter.world.remove(body);
-      }
-
-      function spawnMergedSausage(scene, x, y, typeIndex) {
-        const typeInfo = SAUSAGE_TYPES[typeIndex];
-        const body = scene.matter.add.circle(x, y, typeInfo.radius, {
-          restitution: 0.15,
-          friction: 0.05,
-          density: 0.002,
-        });
-        body.sausageTypeIndex = typeIndex;
-        createPhysicsSausage(scene, body, typeInfo);
       }
 
       function triggerGameOver(scene) {
