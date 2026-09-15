@@ -135,13 +135,6 @@ export function createUI(scene) {
       .setDisplaySize(BOARD_WIDTH, BOARD_HEIGHT)
       .setDepth(-2);
   }
-  // if (scene.textures.exists('set_background')) {
-  //   uiElements.boardBg = scene.add
-  //     .image(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 'set_background')
-  //     .setDisplaySize(CANVAS_WIDTH, CANVAS_HEIGHT)
-  //     .setDepth(-2); // On met un depth plus bas pour passer sous le bgContainer si besoin
-  // }
-  uiElements.bgContainer.fillStyle(0x000000, 0.3).fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   uiElements.uiBg = scene.add.graphics().setDepth(-2);
 
@@ -251,13 +244,30 @@ export function applyTheme(scene) {
   document.body.classList.toggle('light-theme', !state.isDarkMode);
   const colors = state.isDarkMode ? THEMES.dark : THEMES.light;
 
-  // Backgrounds
-  uiElements.bgContainer.clear().fillStyle(colors.uiBg, 1).fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  // 1. Nettoyage des graphics
+  uiElements.bgContainer.clear();
   uiElements.uiBg.clear();
 
-  if (!scene.textures.exists('set_background')) {
+  // 2. Fond global du Canvas (autour de la zone de jeu)
+  uiElements.bgContainer.fillStyle(colors.uiBg, 1).fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  // 3. Gestion de l'aire de jeu (Board)
+  if (uiElements.boardBg && scene.textures.exists('set_background')) {
+    // Si l'image existe, on lui applique une teinte selon le mode (ou rien en Light)
+    // Dark mode : assombrit l'image / Light mode : couleur d'origine (0xffffff)
+    const tintColor = state.isDarkMode ? 0x999999 : 0xffffff;
+    uiElements.boardBg.setTint(tintColor);
+
+    // Voile optionnel sur l'aire de jeu pour ajuster le contraste
+    const overlayColor = state.isDarkMode ? 0x000000 : 0xffffff;
+    const overlayAlpha = state.isDarkMode ? 0.5 : 0.2;
+    uiElements.uiBg.fillStyle(overlayColor, overlayAlpha).fillRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
+  } else {
+    // Fallback sans image : couleur unie
     uiElements.uiBg.fillStyle(colors.bgBoard, 1).fillRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
   }
+
+  // 4. Contour du plateau de jeu
   uiElements.uiBg.lineStyle(2 * SCALE, colors.border, 1).strokeRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
 
   // Cadres Leaderboard et Suivante

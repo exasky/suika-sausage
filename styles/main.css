@@ -1,0 +1,35 @@
+body {
+  margin: 0;
+  padding: 0;
+  /* Image de fond globale */
+  /*background-image: url('assets/cheeses/bg_full.jpg'); /* Adapte le chemin de ton image */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+
+  /* Filtre sombre par défaut (Dark Mode) */
+  background-color: rgba(0, 0, 0, 0.3);
+  background-blend-mode: overlay; /* Fusionne le filtre noir avec l'image */
+
+  transition: background-color 0.3s ease; /* Transition douce lors du changement de thème */
+
+  overflow: hidden;
+}
+
+/* Mode Clair (Light Mode) */
+body.light-theme {
+  /* Filtre clair ou léger voile pour le mode jour */
+  background-color: rgba(0, 0, 0, -0.45);
+  background-blend-mode: overlay;
+}
+
+canvas {
+  border-right: 34px solid black;
+  border-left: 34px solid black;
+}
+
+body.light-theme canvas {
+  border-right: 34px solid #e8e2d8;
+  border-left: 34px solid #e8e2d8;
+}

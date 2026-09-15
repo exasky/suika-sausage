@@ -4,6 +4,7 @@ export const MERGE_SETS = {
   sausages: {
     leaderboardTable: 'leaderboard_sausages', // Nom de ta table Supabase
     bgmUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
+    bgImage: 'assets/sausages/bg.jpg',
     items: [
       { key: '1_cocktail', name: 'Cocktail', radius: 14, score: 1 },
       { key: '2_merguez', name: 'Merguez', radius: 20, score: 3 },
@@ -21,6 +22,7 @@ export const MERGE_SETS = {
   explosives: {
     leaderboardTable: 'leaderboard_explosives', // Nom de ta table Supabase
     bgmUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
+    bgImage: 'assets/explosives/bg.jpg',
     items: [
       { key: '1_petard', name: 'Pétard', radius: 14, score: 1 },
       { key: '2_fusee', name: 'Fusée', radius: 20, score: 3 },
@@ -39,7 +41,7 @@ export const MERGE_SETS = {
     leaderboardTable: 'leaderboard_cheeses',
     // Musique chill / accordéon & guitare acoustique
     bgmUrl: 'https://cdn.pixabay.com/audio/2026/08/22/audio_3ebc293155.mp3',
-    // bgImage: 'assets/cheeses/bg.jpg',
+    bgImage: 'assets/cheeses/bg.jpg',
     items: [
       { key: '1_babybel', name: 'Babybel', radius: 14, score: 1 },
       { key: '2_crottin', name: 'Crottin de Chavignol', radius: 20, score: 3 },
