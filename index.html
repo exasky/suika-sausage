@@ -6,7 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>Suika Sausage Game - Native Phaser Leaderboard</title>
+    <title>Suika Sausage Game</title>
+    <link rel="icon" href="favicon.png" />
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -46,11 +47,10 @@
     <script>
       // Configurations Supabase
       const SUPABASE_URL = 'https://uhetyyqtzubgtuljskyw.supabase.co';
-      const SUPABASE_ANON_KEY = 'sb_publishable_1hTCx4BqfqhprfF1snrj_A_pJxCWYAB'; // <--- Mettre votre clé "anon / public" ici
+      const SUPABASE_ANON_KEY = 'sb_publishable_1hTCx4BqfqhprfF1snrj_A_pJxCWYAB';
       const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       const SCALE = 2;
-      // const SCALE = 2;
 
       const BASE_SAUSAGE_TYPES = [
         { key: '1_cocktail', name: 'Cocktail', radius: 14, score: 1 },
@@ -93,8 +93,9 @@
       let isMuted = false;
 
       let isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      let bgContainer, uiBg, nextBox, leaderBox;
-      let nextLabel, scoreLabel, highLabel, leaderLabel;
+      let bgContainer, uiBg, nextBox, leaderBox, wheelGraphics;
+      let nextLabel, scoreLabel, highLabel, leaderLabel, wheelLabel;
+      let wheelSprites = [];
 
       const config = {
         type: Phaser.AUTO,
@@ -108,7 +109,7 @@
         physics: {
           default: 'matter',
           matter: {
-            gravity: { y: 1.5 },
+            gravity: { y: 1.5 * SCALE },
             runner: { isFixed: true, fps: 120 },
             positionIterations: 20,
             velocityIterations: 20,
@@ -153,6 +154,7 @@
         uiBg = this.add.graphics();
         nextBox = this.add.graphics();
         leaderBox = this.add.graphics();
+        wheelGraphics = this.add.graphics();
 
         const fontS = `${11 * SCALE}px`;
         const fontM = `${13 * SCALE}px`;
@@ -160,38 +162,45 @@
         const fontXL = `${22 * SCALE}px`;
 
         // Section TOP 3 Leaderboard
-        leaderLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 80 * SCALE, '🏆 TOP 3', {
+        leaderLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 75 * SCALE, '🏆 TOP 3', {
           fontSize: fontS,
           fontStyle: 'bold',
         });
         topScoresTexts = [
-          this.add.text(BOARD_WIDTH + 15 * SCALE, 98 * SCALE, '1. ---', { fontSize: fontS }),
-          this.add.text(BOARD_WIDTH + 15 * SCALE, 114 * SCALE, '2. ---', { fontSize: fontS }),
-          this.add.text(BOARD_WIDTH + 15 * SCALE, 130 * SCALE, '3. ---', { fontSize: fontS }),
+          this.add.text(BOARD_WIDTH + 15 * SCALE, 92 * SCALE, '1. ---', { fontSize: fontS }),
+          this.add.text(BOARD_WIDTH + 15 * SCALE, 107 * SCALE, '2. ---', { fontSize: fontS }),
+          this.add.text(BOARD_WIDTH + 15 * SCALE, 122 * SCALE, '3. ---', { fontSize: fontS }),
         ];
 
         // Section Suivante
-        nextLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 160 * SCALE, 'SUIVANTE', {
+        nextLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 150 * SCALE, 'SUIVANTE', {
           fontSize: fontS,
           fontStyle: 'bold',
         });
 
         // Section Scores
-        scoreLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 305 * SCALE, 'SCORE', {
+        scoreLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 275 * SCALE, 'SCORE', {
           fontSize: fontS,
           fontStyle: 'bold',
         });
-        scoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 322 * SCALE, '0', { fontSize: fontXL, fontStyle: 'bold' });
+        scoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 290 * SCALE, '0', { fontSize: fontL, fontStyle: 'bold' });
 
-        highLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 365 * SCALE, 'RECORD PERSO', {
+        highLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 325 * SCALE, 'RECORD', {
           fontSize: fontS,
           fontStyle: 'bold',
         });
-        highScoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 382 * SCALE, highScore, { fontSize: fontL });
+        highScoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 340 * SCALE, highScore, { fontSize: fontM });
 
         sausNameText = this.add
-          .text(BOARD_WIDTH + 15 * SCALE, 435 * SCALE, '', { fontSize: fontM, fontStyle: 'bold' })
+          .text(BOARD_WIDTH + 15 * SCALE, 375 * SCALE, '', { fontSize: fontS, fontStyle: 'bold' })
           .setWordWrapWidth(110 * SCALE);
+
+        // Section Roue d'Évolution
+        wheelLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 415 * SCALE, 'ÉVOLUTION', {
+          fontSize: fontS,
+          fontStyle: 'bold',
+        });
+        createEvolutionWheel(this);
 
         themeBtnText = this.add
           .text(BOARD_WIDTH + 15 * SCALE, 12 * SCALE, '', { fontSize: fontS, fontStyle: 'bold' })
@@ -223,23 +232,29 @@
           });
         }
 
+        // Correctif Game Over Line
         gameOverLine = this.add.graphics();
+        gameOverLine.setPosition(0, 0);
         gameOverLine.setDepth(100);
 
-        // Ombre/Halo rouge en fond
-        gameOverLine.lineStyle(6 * SCALE, 0xff0000, 0.35);
-        gameOverLine.lineBetween(0, GAME_OVER_LINE_Y, BOARD_WIDTH, GAME_OVER_LINE_Y);
+        const drawGameOverLine = () => {
+          gameOverLine.clear();
+          gameOverLine.lineStyle(6 * SCALE, 0xff0000, 0.35);
+          gameOverLine.lineBetween(0, GAME_OVER_LINE_Y, BOARD_WIDTH, GAME_OVER_LINE_Y);
 
-        // Ligne pointillée rouge vif
-        gameOverLine.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
-        const dashWidth = 8 * SCALE;
-        const gapWidth = 6 * SCALE;
+          gameOverLine.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
+          const dashWidth = 8 * SCALE;
+          const gapWidth = 6 * SCALE;
 
-        for (let x = 0; x < BOARD_WIDTH; x += dashWidth + gapWidth) {
-          gameOverLine.lineBetween(x, GAME_OVER_LINE_Y, Math.min(x + dashWidth, BOARD_WIDTH), GAME_OVER_LINE_Y);
-        }
+          for (let x = 0; x < BOARD_WIDTH; x += dashWidth + gapWidth) {
+            gameOverLine.lineBetween(x, GAME_OVER_LINE_Y, Math.min(x + dashWidth, BOARD_WIDTH), GAME_OVER_LINE_Y);
+          }
+        };
+
+        drawGameOverLine();
+
         this.add
-          .text(BOARD_WIDTH - 5 * SCALE, GAME_OVER_LINE_Y - 8 * SCALE, 'LIMIT', {
+          .text(BOARD_WIDTH - 5 * SCALE, GAME_OVER_LINE_Y - 3 * SCALE, 'LIMIT', {
             fontSize: `${9 * SCALE}px`,
             fontStyle: 'bold',
             fill: '#ff2244',
@@ -344,6 +359,30 @@
         });
       }
 
+      function createEvolutionWheel(scene) {
+        const centerX = BOARD_WIDTH + 70 * SCALE;
+        const centerY = 490 * SCALE;
+        const wheelRadius = 42 * SCALE;
+        const total = SAUSAGE_TYPES.length;
+
+        wheelSprites.forEach((s) => s.destroy());
+        wheelSprites = [];
+
+        SAUSAGE_TYPES.forEach((type, index) => {
+          // Angle de depart en haut (-PI/2) puis sens horaire
+          const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
+          const x = centerX + Math.cos(angle) * wheelRadius;
+          const y = centerY + Math.sin(angle) * wheelRadius;
+
+          const img = scene.add.image(x, y, type.key);
+          const iconSize = 14 * SCALE;
+          const maxDim = Math.max(img.width, img.height);
+          img.setScale(iconSize / maxDim);
+
+          wheelSprites.push(img);
+        });
+      }
+
       async function fetchLeaderboard() {
         try {
           const { data, error } = await supabaseClient
@@ -422,6 +461,8 @@
               btnBg: '#2a2421',
               btnText: '#ffffff',
               btnLabel: ' 🌙 DARK ',
+              wheelStroke: 0x554438,
+              arrowColor: 0xffca28,
             }
           : {
               bgBoard: 0xf5f2eb,
@@ -435,6 +476,8 @@
               btnBg: '#ffffff',
               btnText: '#222222',
               btnLabel: ' ☀️ LIGHT ',
+              wheelStroke: 0xc4b3a3,
+              arrowColor: '#d84315',
             };
 
         bgContainer.clear();
@@ -450,12 +493,53 @@
         // Encadré TOP 3
         leaderBox.clear();
         leaderBox.lineStyle(1.5 * SCALE, colors.boxStroke, 1);
-        leaderBox.strokeRoundedRect(BOARD_WIDTH + 10 * SCALE, 72 * SCALE, 120 * SCALE, 75 * SCALE, 6 * SCALE);
+        leaderBox.strokeRoundedRect(BOARD_WIDTH + 10 * SCALE, 68 * SCALE, 120 * SCALE, 70 * SCALE, 6 * SCALE);
 
         // Encadré Suivante
         nextBox.clear();
         nextBox.lineStyle(2 * SCALE, colors.boxStroke, 1);
-        nextBox.strokeRoundedRect(BOARD_WIDTH + 15 * SCALE, 180 * SCALE, 110 * SCALE, 110 * SCALE, 8 * SCALE);
+        nextBox.strokeRoundedRect(BOARD_WIDTH + 20 * SCALE, 168 * SCALE, 100 * SCALE, 90 * SCALE, 8 * SCALE);
+
+        // Tracé du Cercle de la Roue d'Évolution
+        const centerX = BOARD_WIDTH + 70 * SCALE;
+        const centerY = 490 * SCALE;
+        const wheelRadius = 42 * SCALE;
+
+        wheelGraphics.clear();
+        wheelGraphics.lineStyle(1.5 * SCALE, colors.wheelStroke, 0.8);
+        wheelGraphics.strokeCircle(centerX, centerY, wheelRadius);
+
+        // Fleche indicative de rotation (sens horaire)
+        const arrowRadius = wheelRadius + 12 * SCALE;
+        const startAngle = -Math.PI / 3;
+        const endAngle = Math.PI / 4;
+
+        wheelGraphics.lineStyle(2 * SCALE, colors.boxStroke, 1);
+        wheelGraphics.beginPath();
+        wheelGraphics.arc(centerX, centerY, arrowRadius, startAngle, endAngle, false);
+        wheelGraphics.strokePath();
+
+        // Pointe de la flèche au niveau de endAngle
+        const tipX = centerX + Math.cos(endAngle) * arrowRadius;
+        const tipY = centerY + Math.sin(endAngle) * arrowRadius;
+        const arrowHeadSize = 5 * SCALE;
+
+        // Direction tangente à l'arc
+        const tangentAngle = endAngle + Math.PI / 2;
+
+        wheelGraphics.fillStyle(colors.boxStroke, 1);
+        wheelGraphics.beginPath();
+        wheelGraphics.moveTo(tipX, tipY);
+        wheelGraphics.lineTo(
+          tipX - arrowHeadSize * Math.cos(tangentAngle - Math.PI / 6),
+          tipY - arrowHeadSize * Math.sin(tangentAngle - Math.PI / 6),
+        );
+        wheelGraphics.lineTo(
+          tipX - arrowHeadSize * Math.cos(tangentAngle + Math.PI / 6),
+          tipY - arrowHeadSize * Math.sin(tangentAngle + Math.PI / 6),
+        );
+        wheelGraphics.closePath();
+        wheelGraphics.fillPath();
 
         leaderLabel.setColor(colors.scoreText);
         topScoresTexts.forEach((t) => t.setColor(colors.btnText));
@@ -463,6 +547,7 @@
         nextLabel.setColor(colors.label);
         scoreLabel.setColor(colors.label);
         highLabel.setColor(colors.label);
+        wheelLabel.setColor(colors.label);
 
         scoreText.setColor(colors.scoreText);
         highScoreText.setColor(colors.highText);
@@ -532,9 +617,9 @@
 
         if (nextSausagePreview) nextSausagePreview.destroy();
         const nextInfo = SAUSAGE_TYPES[nextTypeIndex];
-        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70 * SCALE, 235 * SCALE, nextInfo.key);
+        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70 * SCALE, 212 * SCALE, nextInfo.key);
 
-        const maxPreviewSize = 80 * SCALE;
+        const maxPreviewSize = 65 * SCALE;
         const maxDimension = Math.max(nextSausagePreview.width, nextSausagePreview.height);
         nextSausagePreview.setScale(maxPreviewSize / maxDimension);
 
@@ -659,10 +744,8 @@
           })
           .setOrigin(0.5);
 
-        // Pseudo enregistré au préalable
         let playerPseudo = (localStorage.getItem('sausage_player_name') || 'JOUEUR').substring(0, 10).toUpperCase();
 
-        // Zone d'affichage du Pseudo
         scene.add
           .text(centerX, 130 * SCALE, 'VOTRE PSEUDO:', {
             fontSize: `${11 * SCALE}px`,
@@ -687,7 +770,6 @@
           })
           .setOrigin(0.5);
 
-        // Clavier Virtuel Native Phaser
         const keyboardKeys = [
           ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
           ['H', 'I', 'J', 'K', 'L', 'M', 'N'],
@@ -740,7 +822,6 @@
           });
         });
 
-        // Bouton Envoyer
         const sendBtnY = 380 * SCALE;
         const sendBtn = scene.add
           .text(centerX, sendBtnY, ' ENVOYER MON SCORE ', {
@@ -787,7 +868,6 @@
           }
         });
 
-        // Bouton Rejouer
         const restartBtn = scene.add
           .text(centerX, 435 * SCALE, ' 🔄 REJOUER ', {
             fontSize: `${15 * SCALE}px`,
