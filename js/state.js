@@ -1,7 +1,7 @@
 import { getScaledSet } from './sets.js';
 
 export const state = {
-  currentSetKey: 'sausages',
+  currentSetKey: window.INITIAL_SET_KEY || 'sausages',
   SAUSAGE_TYPES: [],
   currentTypeIndex: 0,
   nextTypeIndex: 0,

@@ -38,16 +38,14 @@ export function getNextPreviewPos() {
 
 export function positionUIElements() {
   if (isMobilePortrait) {
-    // --- LIGNE 1 : Sélection des Sets ---
-    uiElements.setSausageBtn.setText(' 🌭 SAUCISSES ').setPosition(5 * SCALE, 6 * SCALE);
-    uiElements.setExplosiveBtn.setText(' 💣 EXPLOSIFS ').setPosition(115 * SCALE, 6 * SCALE);
+    // --- LIGNE SUPERIEURE COMPACTE : [🏠 MENU] [🌙 THÈME] [🔊 SON] ---
+    uiElements.homeBtnText.setText(' 🏠 ').setPosition(5 * SCALE, 6 * SCALE);
 
-    // --- LIGNE 2 : Options Thème & Son (compactes sur mobile) ---
     const themeLabel = state.isDarkMode ? ' 🌙 ' : ' ☀️ ';
-    uiElements.themeBtnText.setText(themeLabel).setPosition(235 * SCALE, 6 * SCALE);
+    uiElements.themeBtnText.setText(themeLabel).setPosition(55 * SCALE, 6 * SCALE);
 
     const soundLabel = state.isMuted ? ' 🔇 ' : ' 🔊 ';
-    uiElements.soundBtnText.setText(soundLabel).setPosition(275 * SCALE, 6 * SCALE);
+    uiElements.soundBtnText.setText(soundLabel).setPosition(105 * SCALE, 6 * SCALE);
 
     // --- LEADERBOARD & SUIVANTE ---
     uiElements.leaderLabel.setPosition(10 * SCALE, 45 * SCALE);
@@ -69,8 +67,7 @@ export function positionUIElements() {
     // --- MODE DESKTOP ---
     const uiX = BOARD_WIDTH + 15 * SCALE;
 
-    uiElements.setSausageBtn.setText(' 🌭 SAUCISSES ').setPosition(10 * SCALE, 8 * SCALE);
-    uiElements.setExplosiveBtn.setText(' 💣 EXPLOSIFS ').setPosition(120 * SCALE, 8 * SCALE);
+    uiElements.homeBtnText.setText(' 🏠 MENU ').setPosition(10 * SCALE, 8 * SCALE);
 
     const themeLabel = state.isDarkMode ? ' 🌙 DARK ' : ' ☀️ LIGHT ';
     uiElements.themeBtnText.setText(themeLabel).setPosition(uiX, 12 * SCALE);
@@ -155,14 +152,6 @@ export function applyTheme(scene) {
     uiElements.nextBox.strokeRoundedRect(BOARD_WIDTH + 20 * SCALE, 168 * SCALE, 100 * SCALE, 90 * SCALE, 8 * SCALE);
   }
 
-  if (state.currentSetKey === 'sausages') {
-    uiElements.setSausageBtn.setBackgroundColor(colors.btnActiveBg).setColor(colors.btnActiveText);
-    uiElements.setExplosiveBtn.setBackgroundColor(colors.btnBg).setColor(colors.btnText);
-  } else {
-    uiElements.setSausageBtn.setBackgroundColor(colors.btnBg).setColor(colors.btnText);
-    uiElements.setExplosiveBtn.setBackgroundColor(colors.btnActiveBg).setColor(colors.btnActiveText);
-  }
-
   const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
 
   uiElements.wheelGraphics.clear();
@@ -200,6 +189,12 @@ export function applyTheme(scene) {
   uiElements.leaderLabel.setColor(colors.scoreText);
   state.topScoresTexts.forEach((t) => t.setColor(colors.btnText));
 
+  uiElements.homeBtnText.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+    window.location.href = 'index.html';
+  });
+  uiElements.homeBtnText.setColor(colors.btnText);
+  uiElements.homeBtnText.setBackgroundColor(colors.btnBg);
+
   uiElements.nextLabel.setColor(colors.label);
   uiElements.scoreLabel.setColor(colors.label);
   uiElements.highLabel.setColor(colors.label);
@@ -208,13 +203,6 @@ export function applyTheme(scene) {
   uiElements.scoreText.setColor(colors.scoreText);
   uiElements.highScoreText.setColor(colors.highText);
   uiElements.sausNameText.setColor(colors.nameText);
-
-  uiElements.themeBtnText.setText(colors.btnLabel);
-  uiElements.themeBtnText.setColor(colors.btnText);
-  uiElements.themeBtnText.setBackgroundColor(colors.btnBg);
-
-  uiElements.soundBtnText.setColor(colors.btnText);
-  uiElements.soundBtnText.setBackgroundColor(colors.btnBg);
 
   // À LA FIN de applyTheme() :
   const themeLabel = isMobilePortrait ? (state.isDarkMode ? ' 🌙 ' : ' ☀️ ') : colors.btnLabel;

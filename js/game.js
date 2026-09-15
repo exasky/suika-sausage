@@ -92,48 +92,6 @@ function create() {
   const fontM = `${13 * SCALE}px`;
   const fontL = `${17 * SCALE}px`;
 
-  uiElements.setSausageBtn = this.add
-    .text(0, 0, ' 🌭 SAUCISSES ', { fontSize: fontS, fontStyle: 'bold' })
-    .setPadding(6 * SCALE, 4 * SCALE)
-    .setInteractive({ useHandCursor: true });
-
-  uiElements.setExplosiveBtn = this.add
-    .text(0, 0, ' 💣 EXPLOSIFS ', { fontSize: fontS, fontStyle: 'bold' })
-    .setPadding(6 * SCALE, 4 * SCALE)
-    .setInteractive({ useHandCursor: true });
-
-  // Reload complet de la scène et nettoyage des assets
-  const switchSet = (newSetKey) => {
-    if (state.currentSetKey === newSetKey) return;
-
-    // Supprime les anciennes textures et le JSON physique en mémoire
-    const oldSet = MERGE_SETS[state.currentSetKey];
-    oldSet.items.forEach((type) => {
-      this.textures.remove(type.key);
-    });
-    this.cache.json.remove('physics_shapes');
-    this.cache.audio.remove('bgm');
-
-    // Arrêt immédiat de la musique courante
-    if (state.bgMusic) {
-      state.bgMusic.stop();
-      state.bgMusic.destroy();
-      state.bgMusic = null;
-    }
-    state.currentSetKey = newSetKey;
-    loadCurrentSet();
-    this.scene.restart();
-  };
-
-  uiElements.setSausageBtn.on('pointerdown', (p, x, y, ev) => {
-    if (ev) ev.stopPropagation();
-    switchSet('sausages');
-  });
-  uiElements.setExplosiveBtn.on('pointerdown', (p, x, y, ev) => {
-    if (ev) ev.stopPropagation();
-    switchSet('explosives');
-  });
-
   uiElements.leaderLabel = this.add.text(0, 0, '🏆 TOP 3', { fontSize: fontS, fontStyle: 'bold' });
   state.topScoresTexts = [
     this.add.text(0, 0, '1. ---', { fontSize: fontS }),
@@ -153,6 +111,16 @@ function create() {
     .setWordWrapWidth(110 * SCALE);
 
   uiElements.wheelLabel = this.add.text(0, 0, 'ÉVOLUTION', { fontSize: fontS, fontStyle: 'bold' });
+
+  // Bouton retour Menu / Landing page
+  uiElements.homeBtnText = this.add
+    .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
+    .setPadding(8 * SCALE, 5 * SCALE)
+    .setInteractive({ useHandCursor: true });
+
+  uiElements.homeBtnText.on('pointerdown', () => {
+    window.location.href = 'index.html';
+  });
 
   uiElements.themeBtnText = this.add
     .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })

@@ -2,48 +2,116 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
-    <title>Suika Merge Game</title>
-    <link rel="icon" href="favicon.png" />
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Merge Game — Choisissez votre Thème</title>
+    <link rel="icon" type="image/avif" href="favicon.avif" />
+
     <style>
-      * {
-        box-sizing: border-box;
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        user-select: none;
+      :root {
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --border-color: #333;
+        --accent-color: #ffb703;
+        --text-color: #ffffff;
       }
-      html,
+
       body {
-        margin: 0;
-        padding: 0;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-        background: #121212;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         align-items: center;
-        transition: background 0.3s ease;
-        touch-action: none;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 1rem;
+        box-sizing: border-box;
       }
-      body.light-theme {
-        background: #e0e0e0;
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
       }
-      canvas {
-        display: block;
-        max-width: 100%;
-        max-height: 100%;
-        margin: auto;
-        touch-action: none;
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 900px;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 2px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        text-decoration: none;
+        color: var(--text-color);
+        transition:
+          transform 0.2s ease,
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .card:hover {
+        transform: translateY(-6px);
+        border-color: var(--accent-color);
+        box-shadow: 0 8px 24px rgba(255, 183, 3, 0.15);
+      }
+
+      .card .icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        line-height: 1;
+      }
+
+      .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 700;
+      }
+
+      .card p {
+        margin: 0.5rem 0 0 0;
+        font-size: 0.9rem;
+        color: #aaa;
       }
     </style>
   </head>
   <body>
-    <script type="module" src="js/game.js"></script>
+    <h1>Choisissez un mode de jeu</h1>
+
+    <div class="grid">
+      <a href="sausages.html" class="card">
+        <span class="icon">🌭</span>
+        <h2>Saucisses</h2>
+        <p>Le mode classique</p>
+      </a>
+
+      <a href="explosives.html" class="card">
+        <span class="icon">💣</span>
+        <h2>Explosifs</h2>
+        <p>Ambiance arcade 8-bit</p>
+      </a>
+
+      <a href="cheeses.html" class="card">
+        <span class="icon">🧀</span>
+        <h2>Fromages</h2>
+        <p>Plateau gourmand</p>
+      </a>
+    </div>
   </body>
 </html>
