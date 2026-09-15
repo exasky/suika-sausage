@@ -71,10 +71,21 @@
         radius: type.radius * SCALE,
       }));
 
+      // --- CALCUL RESPONSIVE DE LEAN CANVAS ---
+      const isMobilePortrait = window.innerWidth / window.innerHeight < 0.77;
+
       const BOARD_WIDTH = 340 * SCALE;
-      const CANVAS_WIDTH = 480 * SCALE;
-      const GAME_HEIGHT = 620 * SCALE;
-      const GAME_OVER_LINE_Y = 110 * SCALE;
+      const BOARD_HEIGHT = 620 * SCALE;
+
+      // Position du plateau de jeu selon le mode
+      const boardX = isMobilePortrait ? 0 : 0;
+      const boardY = isMobilePortrait ? 130 * SCALE : 0;
+
+      // Canvas global dimensionné dynamiquement
+      const CANVAS_WIDTH = isMobilePortrait ? BOARD_WIDTH : BOARD_WIDTH + 140 * SCALE;
+      const CANVAS_HEIGHT = isMobilePortrait ? BOARD_HEIGHT + 260 * SCALE : BOARD_HEIGHT;
+
+      const GAME_OVER_LINE_Y = boardY + 110 * SCALE;
 
       let currentTypeIndex = 0;
       let nextTypeIndex = 0;
@@ -103,7 +114,7 @@
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH,
           width: CANVAS_WIDTH,
-          height: GAME_HEIGHT,
+          height: CANVAS_HEIGHT,
         },
         backgroundColor: '#181412',
         physics: {
@@ -144,7 +155,8 @@
         score = 0;
         overflowTimer = 0;
 
-        this.matter.world.setBounds(0, 0, BOARD_WIDTH, GAME_HEIGHT, 32 * SCALE, true, true, false, true);
+        // Limites du monde physique restreintes à la zone du plateau
+        this.matter.world.setBounds(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT, 32 * SCALE, true, true, false, true);
 
         if (!bgMusic) {
           bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
@@ -159,51 +171,28 @@
         const fontS = `${11 * SCALE}px`;
         const fontM = `${13 * SCALE}px`;
         const fontL = `${17 * SCALE}px`;
-        const fontXL = `${22 * SCALE}px`;
 
-        // Section TOP 3 Leaderboard
-        leaderLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 75 * SCALE, '🏆 TOP 3', {
-          fontSize: fontS,
-          fontStyle: 'bold',
-        });
+        // Instanciation initiale des éléments UI (Positionnés via positionUIElements)
+        leaderLabel = this.add.text(0, 0, '🏆 TOP 3', { fontSize: fontS, fontStyle: 'bold' });
         topScoresTexts = [
-          this.add.text(BOARD_WIDTH + 15 * SCALE, 92 * SCALE, '1. ---', { fontSize: fontS }),
-          this.add.text(BOARD_WIDTH + 15 * SCALE, 107 * SCALE, '2. ---', { fontSize: fontS }),
-          this.add.text(BOARD_WIDTH + 15 * SCALE, 122 * SCALE, '3. ---', { fontSize: fontS }),
+          this.add.text(0, 0, '1. ---', { fontSize: fontS }),
+          this.add.text(0, 0, '2. ---', { fontSize: fontS }),
+          this.add.text(0, 0, '3. ---', { fontSize: fontS }),
         ];
 
-        // Section Suivante
-        nextLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 150 * SCALE, 'SUIVANTE', {
-          fontSize: fontS,
-          fontStyle: 'bold',
-        });
+        nextLabel = this.add.text(0, 0, 'SUIVANTE', { fontSize: fontS, fontStyle: 'bold' });
+        scoreLabel = this.add.text(0, 0, 'SCORE', { fontSize: fontS, fontStyle: 'bold' });
+        scoreText = this.add.text(0, 0, '0', { fontSize: fontL, fontStyle: 'bold' });
 
-        // Section Scores
-        scoreLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 275 * SCALE, 'SCORE', {
-          fontSize: fontS,
-          fontStyle: 'bold',
-        });
-        scoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 290 * SCALE, '0', { fontSize: fontL, fontStyle: 'bold' });
+        highLabel = this.add.text(0, 0, 'RECORD', { fontSize: fontS, fontStyle: 'bold' });
+        highScoreText = this.add.text(0, 0, highScore, { fontSize: fontM });
 
-        highLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 325 * SCALE, 'RECORD', {
-          fontSize: fontS,
-          fontStyle: 'bold',
-        });
-        highScoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 340 * SCALE, highScore, { fontSize: fontM });
+        sausNameText = this.add.text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' }).setWordWrapWidth(110 * SCALE);
 
-        sausNameText = this.add
-          .text(BOARD_WIDTH + 15 * SCALE, 375 * SCALE, '', { fontSize: fontS, fontStyle: 'bold' })
-          .setWordWrapWidth(110 * SCALE);
-
-        // Section Roue d'Évolution
-        wheelLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 415 * SCALE, 'ÉVOLUTION', {
-          fontSize: fontS,
-          fontStyle: 'bold',
-        });
-        createEvolutionWheel(this);
+        wheelLabel = this.add.text(0, 0, 'ÉVOLUTION', { fontSize: fontS, fontStyle: 'bold' });
 
         themeBtnText = this.add
-          .text(BOARD_WIDTH + 15 * SCALE, 12 * SCALE, '', { fontSize: fontS, fontStyle: 'bold' })
+          .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
           .setPadding(8 * SCALE, 5 * SCALE)
           .setInteractive({ useHandCursor: true });
 
@@ -214,7 +203,7 @@
         });
 
         soundBtnText = this.add
-          .text(BOARD_WIDTH + 15 * SCALE, 42 * SCALE, ' 🔊 SON ', { fontSize: fontS, fontStyle: 'bold' })
+          .text(0, 0, ' 🔊 SON ', { fontSize: fontS, fontStyle: 'bold' })
           .setPadding(8 * SCALE, 5 * SCALE)
           .setInteractive({ useHandCursor: true });
 
@@ -225,6 +214,9 @@
           soundBtnText.setText(isMuted ? ' 🔇 MUET ' : ' 🔊 SON ');
         });
 
+        positionUIElements();
+        createEvolutionWheel(this);
+
         if (window.matchMedia) {
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             isDarkMode = e.matches;
@@ -232,7 +224,7 @@
           });
         }
 
-        // Correctif Game Over Line
+        // Game Over Line
         gameOverLine = this.add.graphics();
         gameOverLine.setPosition(0, 0);
         gameOverLine.setDepth(100);
@@ -240,21 +232,26 @@
         const drawGameOverLine = () => {
           gameOverLine.clear();
           gameOverLine.lineStyle(6 * SCALE, 0xff0000, 0.35);
-          gameOverLine.lineBetween(0, GAME_OVER_LINE_Y, BOARD_WIDTH, GAME_OVER_LINE_Y);
+          gameOverLine.lineBetween(boardX, GAME_OVER_LINE_Y, boardX + BOARD_WIDTH, GAME_OVER_LINE_Y);
 
           gameOverLine.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
           const dashWidth = 8 * SCALE;
           const gapWidth = 6 * SCALE;
 
-          for (let x = 0; x < BOARD_WIDTH; x += dashWidth + gapWidth) {
-            gameOverLine.lineBetween(x, GAME_OVER_LINE_Y, Math.min(x + dashWidth, BOARD_WIDTH), GAME_OVER_LINE_Y);
+          for (let x = boardX; x < boardX + BOARD_WIDTH; x += dashWidth + gapWidth) {
+            gameOverLine.lineBetween(
+              x,
+              GAME_OVER_LINE_Y,
+              Math.min(x + dashWidth, boardX + BOARD_WIDTH),
+              GAME_OVER_LINE_Y,
+            );
           }
         };
 
         drawGameOverLine();
 
         this.add
-          .text(BOARD_WIDTH - 5 * SCALE, GAME_OVER_LINE_Y - 3 * SCALE, 'LIMIT', {
+          .text(boardX + BOARD_WIDTH - 5 * SCALE, GAME_OVER_LINE_Y - 3 * SCALE, 'LIMIT', {
             fontSize: `${9 * SCALE}px`,
             fontStyle: 'bold',
             fill: '#ff2244',
@@ -270,28 +267,37 @@
         nextTypeIndex = getRandomNextIndex();
         spawnNextSausage(this);
 
+        const isPointerInBoard = (worldPoint) => {
+          return (
+            worldPoint.x >= boardX &&
+            worldPoint.x <= boardX + BOARD_WIDTH &&
+            worldPoint.y >= boardY &&
+            worldPoint.y <= boardY + BOARD_HEIGHT
+          );
+        };
+
         const updatePosition = (pointer) => {
           if (canDrop && currentSausageSprite && !gameOver) {
             const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-            if (worldPoint.x <= BOARD_WIDTH) {
-              const currentRadius = SAUSAGE_TYPES[currentTypeIndex].radius;
-              const minX = currentRadius + 5 * SCALE;
-              const maxX = BOARD_WIDTH - currentRadius - 5 * SCALE;
-              currentSausageSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
-            }
+            const currentRadius = SAUSAGE_TYPES[currentTypeIndex].radius;
+            const minX = boardX + currentRadius + 5 * SCALE;
+            const maxX = boardX + BOARD_WIDTH - currentRadius - 5 * SCALE;
+            currentSausageSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
           }
         };
 
         this.input.on('pointermove', updatePosition);
         this.input.on('pointerdown', (pointer) => {
           const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-          if (worldPoint.x > BOARD_WIDTH) return;
+          if (!isPointerInBoard(worldPoint)) return;
           updatePosition(pointer);
         });
 
         this.input.on('pointerup', (pointer) => {
           const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-          if (worldPoint.x > BOARD_WIDTH || !canDrop || gameOver) return;
+          if (!canDrop || gameOver) return;
+          if (isMobilePortrait && worldPoint.y > boardY + BOARD_HEIGHT) return;
+          if (!isMobilePortrait && worldPoint.x > BOARD_WIDTH) return;
 
           if (this.sound.context && this.sound.context.state === 'suspended') {
             this.sound.context.resume();
@@ -307,7 +313,7 @@
           currentSausageSprite.destroy();
           aimLine.clear();
 
-          createPhysicsSausage(this, dropX, 60 * SCALE, currentTypeIndex);
+          createPhysicsSausage(this, dropX, boardY + 60 * SCALE, currentTypeIndex);
 
           this.time.delayedCall(450, () => {
             if (!gameOver) {
@@ -359,23 +365,85 @@
         });
       }
 
+      function positionUIElements() {
+        if (isMobilePortrait) {
+          themeBtnText.setPosition(10 * SCALE, 10 * SCALE);
+          soundBtnText.setPosition(95 * SCALE, 10 * SCALE);
+
+          leaderLabel.setPosition(10 * SCALE, 45 * SCALE);
+          topScoresTexts[0].setPosition(10 * SCALE, 62 * SCALE);
+          topScoresTexts[1].setPosition(10 * SCALE, 77 * SCALE);
+          topScoresTexts[2].setPosition(10 * SCALE, 92 * SCALE);
+
+          nextLabel.setPosition(BOARD_WIDTH - 110 * SCALE, 45 * SCALE);
+
+          scoreLabel.setPosition(15 * SCALE, boardY + BOARD_HEIGHT + 15 * SCALE);
+          scoreText.setPosition(15 * SCALE, boardY + BOARD_HEIGHT + 30 * SCALE);
+          highLabel.setPosition(100 * SCALE, boardY + BOARD_HEIGHT + 15 * SCALE);
+          highScoreText.setPosition(100 * SCALE, boardY + BOARD_HEIGHT + 30 * SCALE);
+          sausNameText.setPosition(15 * SCALE, boardY + BOARD_HEIGHT + 60 * SCALE);
+
+          wheelLabel.setPosition(BOARD_WIDTH / 2 + 10 * SCALE, boardY + BOARD_HEIGHT + 15 * SCALE);
+        } else {
+          const uiX = BOARD_WIDTH + 15 * SCALE;
+          themeBtnText.setPosition(uiX, 12 * SCALE);
+          soundBtnText.setPosition(uiX, 42 * SCALE);
+
+          leaderLabel.setPosition(uiX, 75 * SCALE);
+          topScoresTexts[0].setPosition(uiX, 92 * SCALE);
+          topScoresTexts[1].setPosition(uiX, 107 * SCALE);
+          topScoresTexts[2].setPosition(uiX, 122 * SCALE);
+
+          nextLabel.setPosition(uiX, 150 * SCALE);
+
+          scoreLabel.setPosition(uiX, 275 * SCALE);
+          scoreText.setPosition(uiX, 290 * SCALE);
+          highLabel.setPosition(uiX, 325 * SCALE);
+          highScoreText.setPosition(uiX, 340 * SCALE);
+          sausNameText.setPosition(uiX, 375 * SCALE);
+
+          wheelLabel.setPosition(uiX, 415 * SCALE);
+        }
+      }
+
+      function getWheelCenter() {
+        if (isMobilePortrait) {
+          return {
+            x: BOARD_WIDTH / 2 + 75 * SCALE,
+            y: boardY + BOARD_HEIGHT + 70 * SCALE,
+            radius: 35 * SCALE,
+          };
+        } else {
+          return {
+            x: BOARD_WIDTH + 70 * SCALE,
+            y: 490 * SCALE,
+            radius: 42 * SCALE,
+          };
+        }
+      }
+
+      function getNextPreviewPos() {
+        if (isMobilePortrait) {
+          return { x: BOARD_WIDTH - 60 * SCALE, y: 80 * SCALE };
+        } else {
+          return { x: BOARD_WIDTH + 70 * SCALE, y: 212 * SCALE };
+        }
+      }
+
       function createEvolutionWheel(scene) {
-        const centerX = BOARD_WIDTH + 70 * SCALE;
-        const centerY = 490 * SCALE;
-        const wheelRadius = 42 * SCALE;
+        const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
         const total = SAUSAGE_TYPES.length;
 
         wheelSprites.forEach((s) => s.destroy());
         wheelSprites = [];
 
         SAUSAGE_TYPES.forEach((type, index) => {
-          // Angle de depart en haut (-PI/2) puis sens horaire
           const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
           const x = centerX + Math.cos(angle) * wheelRadius;
           const y = centerY + Math.sin(angle) * wheelRadius;
 
           const img = scene.add.image(x, y, type.key);
-          const iconSize = 14 * SCALE;
+          const iconSize = 12 * SCALE;
           const maxDim = Math.max(img.width, img.height);
           img.setScale(iconSize / maxDim);
 
@@ -481,36 +549,37 @@
             };
 
         bgContainer.clear();
-        bgContainer.fillStyle(colors.bgBoard, 1);
-        bgContainer.fillRect(0, 0, BOARD_WIDTH, GAME_HEIGHT);
+        bgContainer.fillStyle(colors.uiBg, 1);
+        bgContainer.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         uiBg.clear();
-        uiBg.fillStyle(colors.uiBg, 1);
-        uiBg.fillRect(BOARD_WIDTH, 0, CANVAS_WIDTH - BOARD_WIDTH, GAME_HEIGHT);
+        uiBg.fillStyle(colors.bgBoard, 1);
+        uiBg.fillRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
         uiBg.lineStyle(2 * SCALE, colors.border, 1);
-        uiBg.strokeLineShape(new Phaser.Geom.Line(BOARD_WIDTH, 0, BOARD_WIDTH, GAME_HEIGHT));
+        uiBg.strokeRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
 
-        // Encadré TOP 3
+        // Positionnement adaptatif des encadrés UI
         leaderBox.clear();
         leaderBox.lineStyle(1.5 * SCALE, colors.boxStroke, 1);
-        leaderBox.strokeRoundedRect(BOARD_WIDTH + 10 * SCALE, 68 * SCALE, 120 * SCALE, 70 * SCALE, 6 * SCALE);
-
-        // Encadré Suivante
         nextBox.clear();
         nextBox.lineStyle(2 * SCALE, colors.boxStroke, 1);
-        nextBox.strokeRoundedRect(BOARD_WIDTH + 20 * SCALE, 168 * SCALE, 100 * SCALE, 90 * SCALE, 8 * SCALE);
 
-        // Tracé du Cercle de la Roue d'Évolution
-        const centerX = BOARD_WIDTH + 70 * SCALE;
-        const centerY = 490 * SCALE;
-        const wheelRadius = 42 * SCALE;
+        if (isMobilePortrait) {
+          leaderBox.strokeRoundedRect(5 * SCALE, 40 * SCALE, 160 * SCALE, 65 * SCALE, 6 * SCALE);
+          nextBox.strokeRoundedRect(BOARD_WIDTH - 115 * SCALE, 40 * SCALE, 100 * SCALE, 80 * SCALE, 8 * SCALE);
+        } else {
+          leaderBox.strokeRoundedRect(BOARD_WIDTH + 10 * SCALE, 68 * SCALE, 120 * SCALE, 70 * SCALE, 6 * SCALE);
+          nextBox.strokeRoundedRect(BOARD_WIDTH + 20 * SCALE, 168 * SCALE, 100 * SCALE, 90 * SCALE, 8 * SCALE);
+        }
+
+        // Tracé de la Roue d'Évolution
+        const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
 
         wheelGraphics.clear();
         wheelGraphics.lineStyle(1.5 * SCALE, colors.wheelStroke, 0.8);
         wheelGraphics.strokeCircle(centerX, centerY, wheelRadius);
 
-        // Fleche indicative de rotation (sens horaire)
-        const arrowRadius = wheelRadius + 12 * SCALE;
+        const arrowRadius = wheelRadius + 10 * SCALE;
         const startAngle = -Math.PI / 3;
         const endAngle = Math.PI / 4;
 
@@ -519,12 +588,9 @@
         wheelGraphics.arc(centerX, centerY, arrowRadius, startAngle, endAngle, false);
         wheelGraphics.strokePath();
 
-        // Pointe de la flèche au niveau de endAngle
         const tipX = centerX + Math.cos(endAngle) * arrowRadius;
         const tipY = centerY + Math.sin(endAngle) * arrowRadius;
         const arrowHeadSize = 5 * SCALE;
-
-        // Direction tangente à l'arc
         const tangentAngle = endAngle + Math.PI / 2;
 
         wheelGraphics.fillStyle(colors.boxStroke, 1);
@@ -568,8 +634,8 @@
           aimLine.clear();
           const lineColor = isDarkMode ? 0xffffff : 0x000000;
           aimLine.lineStyle(1 * SCALE, lineColor, 0.3);
-          const startY = 60 * SCALE + SAUSAGE_TYPES[currentTypeIndex].radius;
-          for (let y = startY; y < GAME_HEIGHT; y += 12 * SCALE) {
+          const startY = boardY + 60 * SCALE + SAUSAGE_TYPES[currentTypeIndex].radius;
+          for (let y = startY; y < boardY + BOARD_HEIGHT; y += 12 * SCALE) {
             aimLine.lineBetween(currentSausageSprite.x, y, currentSausageSprite.x, y + 6 * SCALE);
           }
         }
@@ -617,9 +683,10 @@
 
         if (nextSausagePreview) nextSausagePreview.destroy();
         const nextInfo = SAUSAGE_TYPES[nextTypeIndex];
-        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70 * SCALE, 212 * SCALE, nextInfo.key);
+        const previewPos = getNextPreviewPos();
+        nextSausagePreview = scene.add.image(previewPos.x, previewPos.y, nextInfo.key);
 
-        const maxPreviewSize = 65 * SCALE;
+        const maxPreviewSize = 50 * SCALE;
         const maxDimension = Math.max(nextSausagePreview.width, nextSausagePreview.height);
         nextSausagePreview.setScale(maxPreviewSize / maxDimension);
 
@@ -628,16 +695,16 @@
         const activePointer = scene.input.activePointer;
         const worldPoint = scene.cameras.main.getWorldPoint(activePointer.x, activePointer.y);
         const currentRadius = typeInfo.radius;
-        const minX = currentRadius + 5 * SCALE;
-        const maxX = BOARD_WIDTH - currentRadius - 5 * SCALE;
+        const minX = boardX + currentRadius + 5 * SCALE;
+        const maxX = boardX + BOARD_WIDTH - currentRadius - 5 * SCALE;
 
         const initialX =
-          activePointer && activePointer.x > 0 && worldPoint.x < BOARD_WIDTH
+          activePointer && activePointer.x > 0 && worldPoint.x >= boardX && worldPoint.x <= boardX + BOARD_WIDTH
             ? Phaser.Math.Clamp(worldPoint.x, minX, maxX)
-            : BOARD_WIDTH / 2;
+            : boardX + BOARD_WIDTH / 2;
 
         currentSausageSprite.x = initialX;
-        currentSausageSprite.y = 60 * SCALE;
+        currentSausageSprite.y = boardY + 60 * SCALE;
       }
 
       function createPreviewSprite(scene, typeInfo) {
@@ -724,7 +791,7 @@
 
         const overlay = scene.add.graphics();
         overlay.fillStyle(0x000000, 0.88);
-        overlay.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
+        overlay.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         const centerX = CANVAS_WIDTH / 2;
 
