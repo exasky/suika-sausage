@@ -2,12 +2,19 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Suika Sausage Game - High Resolution Centered</title>
+    <!-- Meta Viewport optimisé pour bloquer les gestes tactiles non désirés (double tap zoom, pinch zoom, etc.) -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Suika Sausage Game - Mobile Ready</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
       * {
         box-sizing: border-box;
+        -webkit-touch-callout: none; /* Désactive le menu contextuel sur appui long iOS */
+        -webkit-user-select: none; /* Désactive la sélection de texte */
+        user-select: none;
       }
       html,
       body {
@@ -21,24 +28,24 @@
         justify-content: center;
         align-items: center;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        user-select: none;
         transition: background 0.3s ease;
+        touch-action: none; /* Empêche le défilement et le pull-to-refresh mobile */
       }
       body.light-theme {
         background: #e0e0e0;
       }
-      /* S'assure que le canvas généré par Phaser ne déborde pas du body Flex */
       canvas {
         display: block;
         max-width: 100%;
         max-height: 100%;
         margin: auto;
+        touch-action: none;
       }
     </style>
   </head>
   <body>
     <script>
-      // Facteur de résolution (HiDPI / Retina). 2 = Résolution doublée (Ultra Net)
+      // Facteur de résolution (HiDPI / Retina). 2 = Ultra Net sur mobile & desktop
       const SCALE = 2;
 
       const BASE_SAUSAGE_TYPES = [
@@ -89,7 +96,7 @@
         type: Phaser.AUTO,
         scale: {
           mode: Phaser.Scale.FIT,
-          autoCenter: Phaser.Scale.CENTER_BOTH, // Centrage automatique Phaser (X & Y)
+          autoCenter: Phaser.Scale.CENTER_BOTH,
           width: CANVAS_WIDTH,
           height: GAME_HEIGHT,
         },
@@ -103,6 +110,13 @@
             velocityIterations: 20,
             constraintIterations: 10,
             debug: false,
+          },
+        },
+        // Activation explicite du moteur d'entrées tactiles
+        input: {
+          activePointers: 1, // Limite à un seul point d'interaction pour éviter les faux drop multi-touch
+          touch: {
+            capture: true,
           },
         },
         scene: {
@@ -132,10 +146,6 @@
 
         if (!bgMusic) {
           bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
-        }
-        if (!bgMusic.isPlaying && !isMuted) {
-          this.sound.unlock();
-          bgMusic.play();
         }
 
         bgContainer = this.add.graphics();
@@ -172,7 +182,8 @@
           .setPadding(8 * SCALE, 5 * SCALE)
           .setInteractive({ useHandCursor: true });
 
-        themeBtnText.on('pointerdown', () => {
+        themeBtnText.on('pointerdown', (pointer, localX, localY, event) => {
+          if (event) event.stopPropagation();
           isDarkMode = !isDarkMode;
           applyTheme(this);
         });
@@ -182,7 +193,8 @@
           .setPadding(8 * SCALE, 5 * SCALE)
           .setInteractive({ useHandCursor: true });
 
-        soundBtnText.on('pointerdown', () => {
+        soundBtnText.on('pointerdown', (pointer, localX, localY, event) => {
+          if (event) event.stopPropagation();
           isMuted = !isMuted;
           this.sound.mute = isMuted;
           soundBtnText.setText(isMuted ? ' 🔇 MUET ' : ' 🔊 SON ');
@@ -207,22 +219,39 @@
         nextTypeIndex = getRandomNextIndex();
         spawnNextSausage(this);
 
-        this.input.on('pointermove', (pointer) => {
+        // Déplacement (Souris & Toucher continu)
+        const updatePosition = (pointer) => {
           if (canDrop && currentSausageSprite && !gameOver) {
             const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-            const currentRadius = SAUSAGE_TYPES[currentTypeIndex].radius;
-            const minX = currentRadius + 5 * SCALE;
-            const maxX = BOARD_WIDTH - currentRadius - 5 * SCALE;
-            currentSausageSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
+            if (worldPoint.x <= BOARD_WIDTH) {
+              const currentRadius = SAUSAGE_TYPES[currentTypeIndex].radius;
+              const minX = currentRadius + 5 * SCALE;
+              const maxX = BOARD_WIDTH - currentRadius - 5 * SCALE;
+              currentSausageSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
+            }
           }
+        };
+
+        this.input.on('pointermove', updatePosition);
+        this.input.on('pointerdown', (pointer) => {
+          const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+          // Ignorer les clics/touches sur la zone UI à droite
+          if (worldPoint.x > BOARD_WIDTH) return;
+          updatePosition(pointer);
         });
 
-        this.input.on('pointerdown', (pointer) => {
+        // Relâchement (Toucher relevé ou clic relâché) = Lâcher la saucisse
+        this.input.on('pointerup', (pointer) => {
           const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
           if (worldPoint.x > BOARD_WIDTH || !canDrop || gameOver) return;
 
-          if (this.sound.context.state === 'suspended') {
+          // Déverrouillage Audio WebContext sur iOS/Android au premier tap
+          if (this.sound.context && this.sound.context.state === 'suspended') {
             this.sound.context.resume();
+          }
+          if (!bgMusic.isPlaying && !isMuted) {
+            this.sound.unlock();
+            bgMusic.play();
           }
 
           canDrop = false;
