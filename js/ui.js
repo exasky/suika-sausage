@@ -268,7 +268,7 @@ export function applyTheme(scene) {
   }
 
   // 4. Contour du plateau de jeu
-  uiElements.uiBg.lineStyle(2 * SCALE, colors.border, 1).strokeRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
+  uiElements.uiBg.lineStyle(3 * SCALE, colors.border, 1).strokeRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
 
   // Cadres Leaderboard et Suivante
   uiElements.leaderBox.clear().lineStyle(1.5 * SCALE, colors.boxStroke, 1);

@@ -16,20 +16,3 @@ body {
 
   overflow: hidden;
 }
-
-/* Mode Clair (Light Mode) */
-body.light-theme {
-  /* Filtre clair ou léger voile pour le mode jour */
-  background-color: rgba(0, 0, 0, -0.45);
-  background-blend-mode: overlay;
-}
-
-canvas {
-  border-right: 34px solid black;
-  border-left: 34px solid black;
-}
-
-body.light-theme canvas {
-  border-right: 34px solid #e8e2d8;
-  border-left: 34px solid #e8e2d8;
-}
