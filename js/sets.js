@@ -39,6 +39,7 @@ export const MERGE_SETS = {
     leaderboardTable: 'leaderboard_cheeses',
     // Musique chill / accordéon & guitare acoustique
     bgmUrl: 'https://cdn.pixabay.com/audio/2026/08/22/audio_3ebc293155.mp3',
+    // bgImage: 'assets/cheeses/bg.jpg',
     items: [
       { key: '1_babybel', name: 'Babybel', radius: 14, score: 1 },
       { key: '2_crottin', name: 'Crottin de Chavignol', radius: 20, score: 3 },

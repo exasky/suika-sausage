@@ -6,14 +6,14 @@ import {
   CANVAS_HEIGHT,
   boardX,
   boardY,
-  isMobilePortrait,
   GAME_OVER_LINE_Y,
   supabaseClient,
 } from './config.js';
 import { MERGE_SETS, getLeaderboardTable } from './sets.js';
-import { state, loadCurrentSet } from './state.js';
+import { state } from './state.js';
 import {
   uiElements,
+  createUI,
   applyTheme,
   fetchLeaderboard,
   getNextPreviewPos,
@@ -55,15 +55,18 @@ const config = {
 new Phaser.Game(config);
 
 function preload() {
-  // Charge UNIQUEMENT les assets du set actuel
+  // Charge uniquement les assets du set actuel
   const currentSet = MERGE_SETS[state.currentSetKey];
+
+  if (currentSet.bgImage) {
+    this.load.image('set_background', currentSet.bgImage);
+  }
+
   currentSet.items.forEach((type) => {
     this.load.image(type.key, `assets/${state.currentSetKey}/${type.key}.png`);
   });
 
-  // Charge le fichier physique dédié au set
   this.load.json('physics_shapes', `assets/${state.currentSetKey}/physics.json`);
-  // Charge la musique propre au set courant sous la clé 'bgm'
   this.load.audio('bgm', currentSet.bgmUrl);
 }
 
@@ -75,6 +78,7 @@ function create() {
 
   this.matter.world.setBounds(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT, 32 * SCALE, true, true, false, true);
 
+  // Gestion de la musique de fond
   if (state.bgMusic) {
     state.bgMusic.stop();
     state.bgMusic.destroy();
@@ -82,72 +86,13 @@ function create() {
   }
   state.bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
 
-  uiElements.bgContainer = this.add.graphics();
-  uiElements.uiBg = this.add.graphics();
-  uiElements.nextBox = this.add.graphics();
-  uiElements.leaderBox = this.add.graphics();
-  uiElements.wheelGraphics = this.add.graphics();
+  // Initialisation globale de l'interface
+  createUI(this);
 
-  const fontS = `${11 * SCALE}px`;
-  const fontM = `${13 * SCALE}px`;
-  const fontL = `${17 * SCALE}px`;
-
-  uiElements.leaderLabel = this.add.text(0, 0, '🏆 TOP 3', { fontSize: fontS, fontStyle: 'bold' });
-  state.topScoresTexts = [
-    this.add.text(0, 0, '1. ---', { fontSize: fontS }),
-    this.add.text(0, 0, '2. ---', { fontSize: fontS }),
-    this.add.text(0, 0, '3. ---', { fontSize: fontS }),
-  ];
-
-  uiElements.nextLabel = this.add.text(0, 0, 'SUIVANTE', { fontSize: fontS, fontStyle: 'bold' });
-  uiElements.scoreLabel = this.add.text(0, 0, 'SCORE', { fontSize: fontS, fontStyle: 'bold' });
-  uiElements.scoreText = this.add.text(0, 0, '0', { fontSize: fontL, fontStyle: 'bold' });
-
-  uiElements.highLabel = this.add.text(0, 0, 'RECORD', { fontSize: fontS, fontStyle: 'bold' });
-  uiElements.highScoreText = this.add.text(0, 0, state.highScore, { fontSize: fontM });
-
-  uiElements.sausNameText = this.add
-    .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
-    .setWordWrapWidth(110 * SCALE);
-
-  uiElements.wheelLabel = this.add.text(0, 0, 'ÉVOLUTION', { fontSize: fontS, fontStyle: 'bold' });
-
-  // Bouton retour Menu / Landing page
-  uiElements.homeBtnText = this.add
-    .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
-    .setPadding(8 * SCALE, 5 * SCALE)
-    .setInteractive({ useHandCursor: true });
-
-  uiElements.homeBtnText.on('pointerdown', () => {
-    window.location.href = 'index.html';
-  });
-
-  uiElements.themeBtnText = this.add
-    .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
-    .setPadding(8 * SCALE, 5 * SCALE)
-    .setInteractive({ useHandCursor: true });
-
-  uiElements.themeBtnText.on('pointerdown', (pointer, localX, localY, event) => {
-    if (event) event.stopPropagation();
-    state.isDarkMode = !state.isDarkMode;
-    applyTheme(this);
-  });
-
-  uiElements.soundBtnText = this.add
-    .text(0, 0, ' 🔊 SON ', { fontSize: fontS, fontStyle: 'bold' })
-    .setPadding(8 * SCALE, 5 * SCALE)
-    .setInteractive({ useHandCursor: true });
-
-  uiElements.soundBtnText.on('pointerdown', (pointer, localX, localY, event) => {
-    if (event) event.stopPropagation();
-    state.isMuted = !state.isMuted;
-    this.sound.mute = state.isMuted;
-    uiElements.soundBtnText.setText(state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ');
-  });
-
-  positionUIElements();
+  // Roue d'évolution
   createEvolutionWheel(this);
 
+  // Écoute des changements de thème du système
   if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
       state.isDarkMode = e.matches;
@@ -155,28 +100,10 @@ function create() {
     });
   }
 
+  // Ligne de Game Over
   state.gameOverLine = this.add.graphics();
   state.gameOverLine.setPosition(0, 0);
   state.gameOverLine.setDepth(100);
-
-  const drawGameOverLine = () => {
-    state.gameOverLine.clear();
-    state.gameOverLine.lineStyle(6 * SCALE, 0xff0000, 0.35);
-    state.gameOverLine.lineBetween(boardX, GAME_OVER_LINE_Y, boardX + BOARD_WIDTH, GAME_OVER_LINE_Y);
-
-    state.gameOverLine.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
-    const dashWidth = 8 * SCALE;
-    const gapWidth = 6 * SCALE;
-
-    for (let x = boardX; x < boardX + BOARD_WIDTH; x += dashWidth + gapWidth) {
-      state.gameOverLine.lineBetween(
-        x,
-        GAME_OVER_LINE_Y,
-        Math.min(x + dashWidth, boardX + BOARD_WIDTH),
-        GAME_OVER_LINE_Y,
-      );
-    }
-  };
 
   drawGameOverLine();
 
@@ -197,6 +124,7 @@ function create() {
   state.nextTypeIndex = getRandomNextIndex();
   spawnNextSausage(this);
 
+  // --- Gestion des entrées / interactions ---
   const isPointerInBoard = (worldPoint) => {
     return (
       worldPoint.x >= boardX &&
@@ -217,6 +145,7 @@ function create() {
   };
 
   this.input.on('pointermove', updatePosition);
+
   this.input.on('pointerdown', (pointer) => {
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     if (!isPointerInBoard(worldPoint)) return;
@@ -253,6 +182,7 @@ function create() {
     });
   });
 
+  // --- Gestion des collisions et fusions ---
   this.matter.world.on('collisionstart', (event) => {
     event.pairs.forEach((pair) => {
       const bodyA = pair.bodyA.parent || pair.bodyA;
@@ -293,6 +223,25 @@ function create() {
       }
     });
   });
+}
+
+function drawGameOverLine() {
+  state.gameOverLine.clear();
+  state.gameOverLine.lineStyle(6 * SCALE, 0xff0000, 0.35);
+  state.gameOverLine.lineBetween(boardX, GAME_OVER_LINE_Y, boardX + BOARD_WIDTH, GAME_OVER_LINE_Y);
+
+  state.gameOverLine.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
+  const dashWidth = 8 * SCALE;
+  const gapWidth = 6 * SCALE;
+
+  for (let x = boardX; x < boardX + BOARD_WIDTH; x += dashWidth + gapWidth) {
+    state.gameOverLine.lineBetween(
+      x,
+      GAME_OVER_LINE_Y,
+      Math.min(x + dashWidth, boardX + BOARD_WIDTH),
+      GAME_OVER_LINE_Y,
+    );
+  }
 }
 
 function createEvolutionWheel(scene) {
@@ -344,10 +293,10 @@ function playPopSound(scene, levelIndex = 0) {
 }
 
 function updateScoreDisplay() {
-  uiElements.scoreText.setText(state.score);
+  if (uiElements.scoreText) uiElements.scoreText.setText(state.score);
   if (state.score > state.highScore) {
     state.highScore = state.score;
-    uiElements.highScoreText.setText(state.highScore);
+    if (uiElements.highScoreText) uiElements.highScoreText.setText(state.highScore);
     localStorage.setItem(`high_score_${state.currentSetKey}`, state.highScore);
   }
 }
@@ -370,7 +319,6 @@ function update(time, delta) {
   let isOverflowing = false;
 
   bodies.forEach((body) => {
-    // Vérification stricte de l'index et de la validité du corps
     if (body && body.sausageTypeIndex !== undefined && state.SAUSAGE_TYPES[body.sausageTypeIndex]) {
       if (body.gameObject) {
         body.gameObject.x = body.position.x;
@@ -378,7 +326,7 @@ function update(time, delta) {
         body.gameObject.rotation = body.angle;
       }
 
-      // Détection de l'arrêt / vitesse lente au-dessus de la ligne rouge
+      // Détection du dépassement au-dessus de la ligne
       if (body.speed < 0.3 * SCALE) {
         const itemRadius = state.SAUSAGE_TYPES[body.sausageTypeIndex].radius;
         const topY = body.position.y - itemRadius;
@@ -394,7 +342,6 @@ function update(time, delta) {
   if (isOverflowing) {
     state.overflowTimer += delta;
     if (state.overflowTimer > 1000) {
-      // 1,5 seconde au-dessus de la ligne
       triggerGameOver(this);
     }
   } else {

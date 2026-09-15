@@ -14,6 +14,39 @@ import {
 
 export let uiElements = {};
 
+// --- CONFIGURATION DES THÈMES ---
+const THEMES = {
+  dark: {
+    bgBoard: 0x231e1a,
+    uiBg: 0x110e0d,
+    border: 0x3a312b,
+    boxStroke: 0x443932,
+    label: '#888888',
+    scoreText: '#ffca28',
+    highText: '#ffffff',
+    nameText: '#ff8a65',
+    btnBg: '#2a2421',
+    btnText: '#ffffff',
+    btnLabel: ' 🌙 DARK ',
+    wheelStroke: 0x554438,
+  },
+  light: {
+    bgBoard: 0xf5f2eb,
+    uiBg: 0xe8e2d8,
+    border: 0xc8bfb0,
+    boxStroke: 0xbaa896,
+    label: '#666666',
+    scoreText: '#d84315',
+    highText: '#222222',
+    nameText: '#bf360c',
+    btnBg: '#ffffff',
+    btnText: '#222222',
+    btnLabel: ' ☀️ LIGHT ',
+    wheelStroke: 0xc4b3a3,
+  },
+};
+
+// --- GETTERS DE POSITIONNEMENT ---
 export function getWheelCenter() {
   if (isMobilePortrait) {
     return {
@@ -30,128 +63,153 @@ export function getWheelCenter() {
 }
 
 export function getNextPreviewPos() {
-  if (isMobilePortrait) {
-    return { x: BOARD_WIDTH - 60 * SCALE, y: 80 * SCALE };
-  }
-  return { x: BOARD_WIDTH + 70 * SCALE, y: 212 * SCALE };
+  return isMobilePortrait
+    ? { x: BOARD_WIDTH - 60 * SCALE, y: 80 * SCALE }
+    : { x: BOARD_WIDTH + 70 * SCALE, y: 212 * SCALE };
 }
 
+// --- POSITIONNEMENT DYNAMIQUE DE L'UI ---
 export function positionUIElements() {
   if (isMobilePortrait) {
-    // --- LIGNE SUPERIEURE COMPACTE : [🏠 MENU] [🌙 THÈME] [🔊 SON] ---
-    uiElements.homeBtnText.setText(' 🏠 ').setPosition(5 * SCALE, 6 * SCALE);
+    // Top Bar compacte
+    if (uiElements.homeBtnText) uiElements.homeBtnText.setText(' 🏠 ').setPosition(5 * SCALE, 6 * SCALE);
 
     const themeLabel = state.isDarkMode ? ' 🌙 ' : ' ☀️ ';
-    uiElements.themeBtnText.setText(themeLabel).setPosition(55 * SCALE, 6 * SCALE);
+    if (uiElements.themeBtnText) uiElements.themeBtnText.setText(themeLabel).setPosition(55 * SCALE, 6 * SCALE);
 
     const soundLabel = state.isMuted ? ' 🔇 ' : ' 🔊 ';
-    uiElements.soundBtnText.setText(soundLabel).setPosition(105 * SCALE, 6 * SCALE);
+    if (uiElements.soundBtnText) uiElements.soundBtnText.setText(soundLabel).setPosition(105 * SCALE, 6 * SCALE);
 
-    // --- LEADERBOARD & SUIVANTE ---
-    uiElements.leaderLabel.setPosition(10 * SCALE, 45 * SCALE);
-    state.topScoresTexts[0].setPosition(10 * SCALE, 62 * SCALE);
-    state.topScoresTexts[1].setPosition(10 * SCALE, 77 * SCALE);
-    state.topScoresTexts[2].setPosition(10 * SCALE, 92 * SCALE);
+    // Leaderboard & Suivante
+    if (uiElements.leaderLabel) uiElements.leaderLabel.setPosition(10 * SCALE, 45 * SCALE);
+    state.topScoresTexts.forEach((txt, i) => txt?.setPosition(10 * SCALE, (62 + i * 15) * SCALE));
 
-    uiElements.nextLabel.setPosition(BOARD_WIDTH - 110 * SCALE, 45 * SCALE);
+    if (uiElements.nextLabel) uiElements.nextLabel.setPosition(BOARD_WIDTH - 110 * SCALE, 45 * SCALE);
 
-    // --- SCORES & INFOS BAS DE PAGE ---
-    uiElements.scoreLabel.setPosition(15 * SCALE, boardY + BOARD_HEIGHT + 15 * SCALE);
-    uiElements.scoreText.setPosition(15 * SCALE, boardY + BOARD_HEIGHT + 30 * SCALE);
-    uiElements.highLabel.setPosition(100 * SCALE, boardY + BOARD_HEIGHT + 15 * SCALE);
-    uiElements.highScoreText.setPosition(100 * SCALE, boardY + BOARD_HEIGHT + 30 * SCALE);
-    uiElements.sausNameText.setPosition(15 * SCALE, boardY + BOARD_HEIGHT + 60 * SCALE);
+    // Bottom Stats
+    const bottomY = boardY + BOARD_HEIGHT;
+    if (uiElements.scoreLabel) uiElements.scoreLabel.setPosition(15 * SCALE, bottomY + 15 * SCALE);
+    if (uiElements.scoreText) uiElements.scoreText.setPosition(15 * SCALE, bottomY + 30 * SCALE);
+    if (uiElements.highLabel) uiElements.highLabel.setPosition(100 * SCALE, bottomY + 15 * SCALE);
+    if (uiElements.highScoreText) uiElements.highScoreText.setPosition(100 * SCALE, bottomY + 30 * SCALE);
+    if (uiElements.sausNameText) uiElements.sausNameText.setPosition(15 * SCALE, bottomY + 60 * SCALE);
 
-    uiElements.wheelLabel.setPosition(BOARD_WIDTH / 2 + 10 * SCALE, boardY + BOARD_HEIGHT + 15 * SCALE);
+    if (uiElements.wheelLabel) {
+      uiElements.wheelLabel.setPosition(BOARD_WIDTH / 2 + 10 * SCALE, bottomY + 15 * SCALE);
+    }
   } else {
-    // --- MODE DESKTOP ---
+    // Mode Desktop
     const uiX = BOARD_WIDTH + 15 * SCALE;
 
-    uiElements.homeBtnText.setText(' 🏠 MENU ').setPosition(10 * SCALE, 8 * SCALE);
+    if (uiElements.homeBtnText) uiElements.homeBtnText.setText(' 🏠 MENU ').setPosition(10 * SCALE, 8 * SCALE);
 
     const themeLabel = state.isDarkMode ? ' 🌙 DARK ' : ' ☀️ LIGHT ';
-    uiElements.themeBtnText.setText(themeLabel).setPosition(uiX, 12 * SCALE);
+    if (uiElements.themeBtnText) uiElements.themeBtnText.setText(themeLabel).setPosition(uiX, 12 * SCALE);
 
     const soundLabel = state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
-    uiElements.soundBtnText.setText(soundLabel).setPosition(uiX, 42 * SCALE);
+    if (uiElements.soundBtnText) uiElements.soundBtnText.setText(soundLabel).setPosition(uiX, 42 * SCALE);
 
-    uiElements.leaderLabel.setPosition(uiX, 75 * SCALE);
-    state.topScoresTexts[0].setPosition(uiX, 92 * SCALE);
-    state.topScoresTexts[1].setPosition(uiX, 107 * SCALE);
-    state.topScoresTexts[2].setPosition(uiX, 122 * SCALE);
+    if (uiElements.leaderLabel) uiElements.leaderLabel.setPosition(uiX, 75 * SCALE);
+    state.topScoresTexts.forEach((txt, i) => txt?.setPosition(uiX, (92 + i * 15) * SCALE));
 
-    uiElements.nextLabel.setPosition(uiX, 150 * SCALE);
+    if (uiElements.nextLabel) uiElements.nextLabel.setPosition(uiX, 150 * SCALE);
 
-    uiElements.scoreLabel.setPosition(uiX, 275 * SCALE);
-    uiElements.scoreText.setPosition(uiX, 290 * SCALE);
-    uiElements.highLabel.setPosition(uiX, 325 * SCALE);
-    uiElements.highScoreText.setPosition(uiX, 340 * SCALE);
-    uiElements.sausNameText.setPosition(uiX, 375 * SCALE);
+    if (uiElements.scoreLabel) uiElements.scoreLabel.setPosition(uiX, 275 * SCALE);
+    if (uiElements.scoreText) uiElements.scoreText.setPosition(uiX, 290 * SCALE);
+    if (uiElements.highLabel) uiElements.highLabel.setPosition(uiX, 325 * SCALE);
+    if (uiElements.highScoreText) uiElements.highScoreText.setPosition(uiX, 340 * SCALE);
+    if (uiElements.sausNameText) uiElements.sausNameText.setPosition(uiX, 375 * SCALE);
 
-    uiElements.wheelLabel.setPosition(uiX, 415 * SCALE);
+    if (uiElements.wheelLabel) uiElements.wheelLabel.setPosition(uiX, 415 * SCALE);
   }
 }
 
-export function applyTheme(scene) {
-  document.body.classList.toggle('light-theme', !state.isDarkMode);
+// --- CREATION DE L'UI ---
+export function createUI(scene) {
+  // Arrière-plans
+  uiElements.bgContainer = scene.add.graphics().setDepth(-3);
 
-  const colors = state.isDarkMode
-    ? {
-        bgBoard: 0x231e1a,
-        uiBg: 0x110e0d,
-        border: 0x3a312b,
-        boxStroke: 0x443932,
-        label: '#888888',
-        scoreText: '#ffca28',
-        highText: '#ffffff',
-        nameText: '#ff8a65',
-        btnBg: '#2a2421',
-        btnText: '#ffffff',
-        btnActiveBg: '#ffca28',
-        btnActiveText: '#181412',
-        btnLabel: ' 🌙 DARK ',
-        wheelStroke: 0x554438,
-      }
-    : {
-        bgBoard: 0xf5f2eb,
-        uiBg: 0xe8e2d8,
-        border: 0xc8bfb0,
-        boxStroke: 0xbaa896,
-        label: '#666666',
-        scoreText: '#d84315',
-        highText: '#222222',
-        nameText: '#bf360c',
-        btnBg: '#ffffff',
-        btnText: '#222222',
-        btnActiveBg: '#d84315',
-        btnActiveText: '#ffffff',
-        btnLabel: ' ☀️ LIGHT ',
-        wheelStroke: 0xc4b3a3,
-      };
-
-  uiElements.bgContainer.clear();
-  uiElements.bgContainer.fillStyle(colors.uiBg, 1);
-  uiElements.bgContainer.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-  uiElements.uiBg.clear();
-  uiElements.uiBg.fillStyle(colors.bgBoard, 1);
-  uiElements.uiBg.fillRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
-  uiElements.uiBg.lineStyle(2 * SCALE, colors.border, 1);
-  uiElements.uiBg.strokeRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
-
-  uiElements.leaderBox.clear();
-  uiElements.leaderBox.lineStyle(1.5 * SCALE, colors.boxStroke, 1);
-  uiElements.nextBox.clear();
-  uiElements.nextBox.lineStyle(2 * SCALE, colors.boxStroke, 1);
-
-  if (isMobilePortrait) {
-    uiElements.leaderBox.strokeRoundedRect(5 * SCALE, 40 * SCALE, 160 * SCALE, 65 * SCALE, 6 * SCALE);
-    uiElements.nextBox.strokeRoundedRect(BOARD_WIDTH - 115 * SCALE, 40 * SCALE, 100 * SCALE, 80 * SCALE, 8 * SCALE);
-  } else {
-    uiElements.leaderBox.strokeRoundedRect(BOARD_WIDTH + 10 * SCALE, 68 * SCALE, 120 * SCALE, 70 * SCALE, 6 * SCALE);
-    uiElements.nextBox.strokeRoundedRect(BOARD_WIDTH + 20 * SCALE, 168 * SCALE, 100 * SCALE, 90 * SCALE, 8 * SCALE);
+  if (scene.textures.exists('set_background')) {
+    uiElements.boardBg = scene.add
+      .image(boardX + BOARD_WIDTH / 2, boardY + BOARD_HEIGHT / 2, 'set_background')
+      .setDisplaySize(BOARD_WIDTH, BOARD_HEIGHT)
+      .setDepth(-2);
   }
+  // if (scene.textures.exists('set_background')) {
+  //   uiElements.boardBg = scene.add
+  //     .image(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 'set_background')
+  //     .setDisplaySize(CANVAS_WIDTH, CANVAS_HEIGHT)
+  //     .setDepth(-2); // On met un depth plus bas pour passer sous le bgContainer si besoin
+  // }
+  uiElements.bgContainer.fillStyle(0x000000, 0.3).fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+  uiElements.uiBg = scene.add.graphics().setDepth(-2);
+
+  // Styles de polices
+  const fontS = `${11 * SCALE}px`;
+  const fontM = `${13 * SCALE}px`;
+  const fontL = `${17 * SCALE}px`;
+
+  // Helper pour les boutons
+  const createButton = (text, onClick) => {
+    return scene.add
+      .text(0, 0, text, { fontSize: fontS, fontStyle: 'bold' })
+      .setPadding(8 * SCALE, 5 * SCALE)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', (pointer, localX, localY, event) => {
+        if (event) event.stopPropagation();
+        onClick();
+      });
+  };
+
+  // Boutons d'action
+  uiElements.homeBtnText = createButton('', () => {
+    window.location.href = 'index.html';
+  });
+
+  uiElements.themeBtnText = createButton('', () => {
+    state.isDarkMode = !state.isDarkMode;
+    applyTheme(scene);
+  });
+
+  uiElements.soundBtnText = createButton(' 🔊 SON ', () => {
+    state.isMuted = !state.isMuted;
+    scene.sound.mute = state.isMuted;
+    const soundLabel = isMobilePortrait ? (state.isMuted ? ' 🔇 ' : ' 🔊 ') : state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
+    uiElements.soundBtnText.setText(soundLabel);
+  });
+
+  // Conteneurs graphiques
+  uiElements.leaderBox = scene.add.graphics();
+  uiElements.nextBox = scene.add.graphics();
+  uiElements.wheelGraphics = scene.add.graphics();
+
+  // Labels et Scores
+  uiElements.leaderLabel = scene.add.text(0, 0, 'TOP 3', {
+    fontFamily: 'monospace',
+    fontSize: `${12 * SCALE}px`,
+    fontStyle: 'bold',
+  });
+
+  state.topScoresTexts = [1, 2, 3].map((num) =>
+    scene.add.text(0, 0, `${num}. ---`, { fontFamily: 'monospace', fontSize: `${11 * SCALE}px` }),
+  );
+
+  uiElements.nextLabel = scene.add.text(0, 0, 'SUIVANTE', { fontSize: fontS, fontStyle: 'bold' });
+  uiElements.scoreLabel = scene.add.text(0, 0, 'SCORE', { fontSize: fontS, fontStyle: 'bold' });
+  uiElements.scoreText = scene.add.text(0, 0, '0', { fontSize: fontL, fontStyle: 'bold' });
+  uiElements.highLabel = scene.add.text(0, 0, 'RECORD', { fontSize: fontS, fontStyle: 'bold' });
+  uiElements.highScoreText = scene.add.text(0, 0, state.highScore, { fontSize: fontM });
+  uiElements.sausNameText = scene.add
+    .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
+    .setWordWrapWidth(110 * SCALE);
+  uiElements.wheelLabel = scene.add.text(0, 0, 'ÉVOLUTION', { fontSize: fontS, fontStyle: 'bold' });
+
+  positionUIElements();
+}
+
+// --- DESSIN DU CERCLE D'ÉVOLUTION ---
+function drawWheelGraphics(colors) {
   const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
 
   uiElements.wheelGraphics.clear();
@@ -167,6 +225,7 @@ export function applyTheme(scene) {
   uiElements.wheelGraphics.arc(centerX, centerY, arrowRadius, startAngle, endAngle, false);
   uiElements.wheelGraphics.strokePath();
 
+  // Tête de la flèche
   const tipX = centerX + Math.cos(endAngle) * arrowRadius;
   const tipY = centerY + Math.sin(endAngle) * arrowRadius;
   const arrowHeadSize = 5 * SCALE;
@@ -185,37 +244,66 @@ export function applyTheme(scene) {
   );
   uiElements.wheelGraphics.closePath();
   uiElements.wheelGraphics.fillPath();
+}
 
+// --- APPLICATION DU THÈME ---
+export function applyTheme(scene) {
+  document.body.classList.toggle('light-theme', !state.isDarkMode);
+  const colors = state.isDarkMode ? THEMES.dark : THEMES.light;
+
+  // Backgrounds
+  uiElements.bgContainer.clear().fillStyle(colors.uiBg, 1).fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  uiElements.uiBg.clear();
+
+  if (!scene.textures.exists('set_background')) {
+    uiElements.uiBg.fillStyle(colors.bgBoard, 1).fillRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
+  }
+  uiElements.uiBg.lineStyle(2 * SCALE, colors.border, 1).strokeRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
+
+  // Cadres Leaderboard et Suivante
+  uiElements.leaderBox.clear().lineStyle(1.5 * SCALE, colors.boxStroke, 1);
+  uiElements.nextBox.clear().lineStyle(2 * SCALE, colors.boxStroke, 1);
+
+  if (isMobilePortrait) {
+    uiElements.leaderBox.strokeRoundedRect(5 * SCALE, 40 * SCALE, 160 * SCALE, 65 * SCALE, 6 * SCALE);
+    uiElements.nextBox.strokeRoundedRect(BOARD_WIDTH - 115 * SCALE, 40 * SCALE, 100 * SCALE, 80 * SCALE, 8 * SCALE);
+  } else {
+    uiElements.leaderBox.strokeRoundedRect(BOARD_WIDTH + 10 * SCALE, 68 * SCALE, 120 * SCALE, 70 * SCALE, 6 * SCALE);
+    uiElements.nextBox.strokeRoundedRect(BOARD_WIDTH + 20 * SCALE, 168 * SCALE, 100 * SCALE, 90 * SCALE, 8 * SCALE);
+  }
+
+  // Graphiques Roue
+  drawWheelGraphics(colors);
+
+  // Couleurs des textes
   uiElements.leaderLabel.setColor(colors.scoreText);
   state.topScoresTexts.forEach((t) => t.setColor(colors.btnText));
 
-  uiElements.homeBtnText.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-    window.location.href = 'index.html';
-  });
-  uiElements.homeBtnText.setColor(colors.btnText);
-  uiElements.homeBtnText.setBackgroundColor(colors.btnBg);
+  if (uiElements.homeBtnText) {
+    uiElements.homeBtnText.setColor(colors.btnText).setBackgroundColor(colors.btnBg);
+  }
 
-  uiElements.nextLabel.setColor(colors.label);
-  uiElements.scoreLabel.setColor(colors.label);
-  uiElements.highLabel.setColor(colors.label);
-  uiElements.wheelLabel.setColor(colors.label);
+  [uiElements.nextLabel, uiElements.scoreLabel, uiElements.highLabel, uiElements.wheelLabel].forEach((label) =>
+    label?.setColor(colors.label),
+  );
 
   uiElements.scoreText.setColor(colors.scoreText);
   uiElements.highScoreText.setColor(colors.highText);
   uiElements.sausNameText.setColor(colors.nameText);
 
-  // À LA FIN de applyTheme() :
-  const themeLabel = isMobilePortrait ? (state.isDarkMode ? ' 🌙 ' : ' ☀️ ') : colors.btnLabel;
-  uiElements.themeBtnText.setText(themeLabel);
-  uiElements.themeBtnText.setColor(colors.btnText);
-  uiElements.themeBtnText.setBackgroundColor(colors.btnBg);
+  // Labels boutons dynamique
+  if (uiElements.themeBtnText) {
+    const themeLabel = isMobilePortrait ? (state.isDarkMode ? ' 🌙 ' : ' ☀️ ') : colors.btnLabel;
+    uiElements.themeBtnText.setText(themeLabel).setColor(colors.btnText).setBackgroundColor(colors.btnBg);
+  }
 
-  const soundLabel = isMobilePortrait ? (state.isMuted ? ' 🔇 ' : ' 🔊 ') : state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
-  uiElements.soundBtnText.setText(soundLabel);
-  uiElements.soundBtnText.setColor(colors.btnText);
-  uiElements.soundBtnText.setBackgroundColor(colors.btnBg);
+  if (uiElements.soundBtnText) {
+    const soundLabel = isMobilePortrait ? (state.isMuted ? ' 🔇 ' : ' 🔊 ') : state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
+    uiElements.soundBtnText.setText(soundLabel).setColor(colors.btnText).setBackgroundColor(colors.btnBg);
+  }
 }
 
+// --- APPEL API LEADERBOARD ---
 export async function fetchLeaderboard() {
   const table = getLeaderboardTable(state.currentSetKey);
   try {
@@ -225,17 +313,18 @@ export async function fetchLeaderboard() {
       .order('score', { ascending: false })
       .limit(3);
 
-    if (error) return console.error('Erreur Supabase:', error);
+    if (error) throw error;
 
     state.topScoresTexts.forEach((textObj, index) => {
-      if (data && data[index]) {
-        const name = data[index].name.length > 10 ? data[index].name.substring(0, 8) + '..' : data[index].name;
-        textObj.setText(`${index + 1}. ${name} (${data[index].score})`);
+      const entry = data?.[index];
+      if (entry) {
+        const name = entry.name.length > 10 ? `${entry.name.substring(0, 8)}..` : entry.name;
+        textObj.setText(`${index + 1}. ${name} (${entry.score})`);
       } else {
         textObj.setText(`${index + 1}. ---`);
       }
     });
   } catch (e) {
-    console.error(e);
+    console.error('Erreur Supabase (Leaderboard) :', e.message || e);
   }
 }
