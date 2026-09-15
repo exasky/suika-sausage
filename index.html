@@ -2,17 +2,24 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Suika Sausage Game - Precise Physics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suika Sausage Game - High Resolution Centered</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
       body {
         margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
         background: #121212;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
-        color: white;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         user-select: none;
         transition: background 0.3s ease;
@@ -20,11 +27,21 @@
       body.light-theme {
         background: #e0e0e0;
       }
+      /* S'assure que le canvas généré par Phaser ne déborde pas du body Flex */
+      canvas {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+        margin: auto;
+      }
     </style>
   </head>
   <body>
     <script>
-      const SAUSAGE_TYPES = [
+      // Facteur de résolution (HiDPI / Retina). 2 = Résolution doublée (Ultra Net)
+      const SCALE = 2;
+
+      const BASE_SAUSAGE_TYPES = [
         { key: '1_cocktail', name: 'Cocktail', radius: 14, score: 1 },
         { key: '2_merguez', name: 'Merguez', radius: 20, score: 3 },
         { key: '3_chipolata', name: 'Chipolata', radius: 28, score: 6 },
@@ -38,11 +55,23 @@
         { key: '11_mortadelle', name: 'Mortadelle', radius: 125, score: 66 },
       ];
 
+      const SAUSAGE_TYPES = BASE_SAUSAGE_TYPES.map((type) => ({
+        ...type,
+        radius: type.radius * SCALE,
+      }));
+
+      // Dimensions virtuelles haute définition
+      const BOARD_WIDTH = 340 * SCALE;
+      const CANVAS_WIDTH = 480 * SCALE;
+      const GAME_HEIGHT = 620 * SCALE;
+      const GAME_OVER_LINE_Y = 110 * SCALE;
+
       let currentTypeIndex = 0;
       let nextTypeIndex = 0;
       let currentSausageSprite = null;
       let nextSausagePreview = null;
       let aimLine = null;
+      let gameOverLine = null;
       let canDrop = true;
       let score = 0;
       let highScore = localStorage.getItem('sausage_high_score') || 0;
@@ -53,28 +82,23 @@
       let isMuted = false;
 
       let isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-      const BOARD_WIDTH = 340;
-      const CANVAS_WIDTH = 480;
-      const GAME_HEIGHT = 620;
-      const GAME_OVER_LINE_Y = 110;
-
       let bgContainer, uiBg, nextBox;
       let nextLabel, scoreLabel, highLabel;
 
       const config = {
         type: Phaser.AUTO,
-        width: CANVAS_WIDTH,
-        height: GAME_HEIGHT,
+        scale: {
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH, // Centrage automatique Phaser (X & Y)
+          width: CANVAS_WIDTH,
+          height: GAME_HEIGHT,
+        },
         backgroundColor: '#181412',
         physics: {
           default: 'matter',
           matter: {
-            gravity: { y: 1.5 },
-            runner: {
-              isFixed: true,
-              fps: 120,
-            },
+            gravity: { y: 1.5 * SCALE },
+            runner: { isFixed: true, fps: 120 },
             positionIterations: 20,
             velocityIterations: 20,
             constraintIterations: 10,
@@ -95,8 +119,6 @@
           this.load.image(type.key, `assets/${type.key}.png`);
         });
         this.load.json('physics_shapes', 'physics.json');
-
-        // Audio de fond libre de droits (boucle style jeux vidéo)
         this.load.audio('bgm', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3');
       }
 
@@ -106,9 +128,8 @@
         score = 0;
         overflowTimer = 0;
 
-        this.matter.world.setBounds(0, 0, BOARD_WIDTH, GAME_HEIGHT, 32, true, true, false, true);
+        this.matter.world.setBounds(0, 0, BOARD_WIDTH, GAME_HEIGHT, 32 * SCALE, true, true, false, true);
 
-        // Gestion de la musique
         if (!bgMusic) {
           bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
         }
@@ -121,26 +142,34 @@
         uiBg = this.add.graphics();
         nextBox = this.add.graphics();
 
-        nextLabel = this.add.text(BOARD_WIDTH + 15, 85, 'SUIVANTE', { fontSize: '12px', fontStyle: 'bold' });
-        scoreLabel = this.add.text(BOARD_WIDTH + 15, 235, 'SCORE', { fontSize: '12px', fontStyle: 'bold' });
-        scoreText = this.add.text(BOARD_WIDTH + 15, 255, '0', { fontSize: '24px', fontStyle: 'bold' });
+        const fontS = `${12 * SCALE}px`;
+        const fontM = `${14 * SCALE}px`;
+        const fontL = `${18 * SCALE}px`;
+        const fontXL = `${24 * SCALE}px`;
 
-        highLabel = this.add.text(BOARD_WIDTH + 15, 305, 'MEILLEUR', { fontSize: '12px', fontStyle: 'bold' });
-        highScoreText = this.add.text(BOARD_WIDTH + 15, 325, highScore, { fontSize: '18px' });
-
-        sausNameText = this.add.text(BOARD_WIDTH + 15, 380, '', {
-          fontSize: '14px',
+        nextLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 85 * SCALE, 'SUIVANTE', {
+          fontSize: fontS,
           fontStyle: 'bold',
-          wordWrap: { width: 110 },
         });
+        scoreLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 235 * SCALE, 'SCORE', {
+          fontSize: fontS,
+          fontStyle: 'bold',
+        });
+        scoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 255 * SCALE, '0', { fontSize: fontXL, fontStyle: 'bold' });
 
-        // Bouton Thème
+        highLabel = this.add.text(BOARD_WIDTH + 15 * SCALE, 305 * SCALE, 'MEILLEUR', {
+          fontSize: fontS,
+          fontStyle: 'bold',
+        });
+        highScoreText = this.add.text(BOARD_WIDTH + 15 * SCALE, 325 * SCALE, highScore, { fontSize: fontL });
+
+        sausNameText = this.add
+          .text(BOARD_WIDTH + 15 * SCALE, 380 * SCALE, '', { fontSize: fontM, fontStyle: 'bold' })
+          .setWordWrapWidth(110 * SCALE);
+
         themeBtnText = this.add
-          .text(BOARD_WIDTH + 15, 12, '', {
-            fontSize: '12px',
-            fontStyle: 'bold',
-            padding: { x: 8, y: 5 },
-          })
+          .text(BOARD_WIDTH + 15 * SCALE, 12 * SCALE, '', { fontSize: fontS, fontStyle: 'bold' })
+          .setPadding(8 * SCALE, 5 * SCALE)
           .setInteractive({ useHandCursor: true });
 
         themeBtnText.on('pointerdown', () => {
@@ -148,13 +177,9 @@
           applyTheme(this);
         });
 
-        // Bouton Son (Mute / Unmute)
         soundBtnText = this.add
-          .text(BOARD_WIDTH + 15, 45, ' 🔊 SON ', {
-            fontSize: '12px',
-            fontStyle: 'bold',
-            padding: { x: 8, y: 5 },
-          })
+          .text(BOARD_WIDTH + 15 * SCALE, 45 * SCALE, ' 🔊 SON ', { fontSize: fontS, fontStyle: 'bold' })
+          .setPadding(8 * SCALE, 5 * SCALE)
           .setInteractive({ useHandCursor: true });
 
         soundBtnText.on('pointerdown', () => {
@@ -170,10 +195,10 @@
           });
         }
 
-        const line = this.add.graphics();
-        line.lineStyle(2, 0xff3333, 0.6);
-        line.lineTo(BOARD_WIDTH, 0);
-        line.y = GAME_OVER_LINE_Y;
+        gameOverLine = this.add.graphics();
+        gameOverLine.lineStyle(2 * SCALE, 0xff3333, 0.6);
+        gameOverLine.lineTo(BOARD_WIDTH, 0);
+        gameOverLine.y = GAME_OVER_LINE_Y;
 
         aimLine = this.add.graphics();
 
@@ -184,17 +209,18 @@
 
         this.input.on('pointermove', (pointer) => {
           if (canDrop && currentSausageSprite && !gameOver) {
+            const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
             const currentRadius = SAUSAGE_TYPES[currentTypeIndex].radius;
-            const minX = currentRadius + 5;
-            const maxX = BOARD_WIDTH - currentRadius - 5;
-            currentSausageSprite.x = Phaser.Math.Clamp(pointer.x, minX, maxX);
+            const minX = currentRadius + 5 * SCALE;
+            const maxX = BOARD_WIDTH - currentRadius - 5 * SCALE;
+            currentSausageSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
           }
         });
 
         this.input.on('pointerdown', (pointer) => {
-          if (pointer.x > BOARD_WIDTH || !canDrop || gameOver) return;
+          const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+          if (worldPoint.x > BOARD_WIDTH || !canDrop || gameOver) return;
 
-          // Assurer le lancement de l'audio si restreint au chargement
           if (this.sound.context.state === 'suspended') {
             this.sound.context.resume();
           }
@@ -205,7 +231,7 @@
           currentSausageSprite.destroy();
           aimLine.clear();
 
-          createPhysicsSausage(this, dropX, 60, currentTypeIndex);
+          createPhysicsSausage(this, dropX, 60 * SCALE, currentTypeIndex);
 
           this.time.delayedCall(450, () => {
             if (!gameOver) {
@@ -217,30 +243,27 @@
 
         this.matter.world.on('collisionstart', (event) => {
           event.pairs.forEach((pair) => {
-            const bodyA = pair.bodyA;
-            const bodyB = pair.bodyB;
+            const bodyA = pair.bodyA.parent || pair.bodyA;
+            const bodyB = pair.bodyB.parent || pair.bodyB;
 
-            const parentA = bodyA.parent || bodyA;
-            const parentB = bodyB.parent || bodyB;
+            if (bodyA.sausageTypeIndex !== undefined && bodyB.sausageTypeIndex !== undefined) {
+              if (bodyA.sausageTypeIndex === bodyB.sausageTypeIndex) {
+                const currentIndex = bodyA.sausageTypeIndex;
 
-            if (parentA.sausageTypeIndex !== undefined && parentB.sausageTypeIndex !== undefined) {
-              if (parentA.sausageTypeIndex === parentB.sausageTypeIndex) {
-                const currentIndex = parentA.sausageTypeIndex;
-
-                if (parentA.isMarkedForDelete || parentB.isMarkedForDelete) return;
-                parentA.isMarkedForDelete = true;
-                parentB.isMarkedForDelete = true;
+                if (bodyA.isMarkedForDelete || bodyB.isMarkedForDelete) return;
+                bodyA.isMarkedForDelete = true;
+                bodyB.isMarkedForDelete = true;
 
                 if (currentIndex < SAUSAGE_TYPES.length - 1) {
-                  const newX = (parentA.position.x + parentB.position.x) / 2;
-                  const newY = (parentA.position.y + parentB.position.y) / 2;
+                  const newX = (bodyA.position.x + bodyB.position.x) / 2;
+                  const newY = (bodyA.position.y + bodyB.position.y) / 2;
                   const nextIndex = currentIndex + 1;
 
                   score += SAUSAGE_TYPES[nextIndex].score;
                   updateScoreDisplay();
 
-                  destroySausageBody(this, parentA);
-                  destroySausageBody(this, parentB);
+                  destroySausageBody(this, bodyA);
+                  destroySausageBody(this, bodyB);
 
                   this.time.delayedCall(20, () => {
                     createPhysicsSausage(this, newX, newY, nextIndex);
@@ -249,8 +272,8 @@
                   score += SAUSAGE_TYPES[currentIndex].score * 2;
                   updateScoreDisplay();
 
-                  destroySausageBody(this, parentA);
-                  destroySausageBody(this, parentB);
+                  destroySausageBody(this, bodyA);
+                  destroySausageBody(this, bodyB);
                 }
               }
             }
@@ -305,12 +328,12 @@
         uiBg.clear();
         uiBg.fillStyle(colors.uiBg, 1);
         uiBg.fillRect(BOARD_WIDTH, 0, CANVAS_WIDTH - BOARD_WIDTH, GAME_HEIGHT);
-        uiBg.lineStyle(2, colors.border, 1);
+        uiBg.lineStyle(2 * SCALE, colors.border, 1);
         uiBg.strokeLineShape(new Phaser.Geom.Line(BOARD_WIDTH, 0, BOARD_WIDTH, GAME_HEIGHT));
 
         nextBox.clear();
-        nextBox.lineStyle(2, colors.boxStroke, 1);
-        nextBox.strokeRoundedRect(BOARD_WIDTH + 15, 105, 110, 110, 8);
+        nextBox.lineStyle(2 * SCALE, colors.boxStroke, 1);
+        nextBox.strokeRoundedRect(BOARD_WIDTH + 15 * SCALE, 105 * SCALE, 110 * SCALE, 110 * SCALE, 8 * SCALE);
 
         nextLabel.setColor(colors.label);
         scoreLabel.setColor(colors.label);
@@ -334,10 +357,10 @@
         if (canDrop && currentSausageSprite) {
           aimLine.clear();
           const lineColor = isDarkMode ? 0xffffff : 0x000000;
-          aimLine.lineStyle(1, lineColor, 0.3);
-          const startY = 60 + SAUSAGE_TYPES[currentTypeIndex].radius;
-          for (let y = startY; y < GAME_HEIGHT; y += 12) {
-            aimLine.lineBetween(currentSausageSprite.x, y, currentSausageSprite.x, y + 6);
+          aimLine.lineStyle(1 * SCALE, lineColor, 0.3);
+          const startY = 60 * SCALE + SAUSAGE_TYPES[currentTypeIndex].radius;
+          for (let y = startY; y < GAME_HEIGHT; y += 12 * SCALE) {
+            aimLine.lineBetween(currentSausageSprite.x, y, currentSausageSprite.x, y + 6 * SCALE);
           }
         }
 
@@ -352,7 +375,7 @@
               body.gameObject.rotation = body.angle;
             }
 
-            if (body.speed < 0.3) {
+            if (body.speed < 0.3 * SCALE) {
               const topY = body.position.y - SAUSAGE_TYPES[body.sausageTypeIndex].radius;
               if (topY < GAME_OVER_LINE_Y) {
                 isOverflowing = true;
@@ -384,25 +407,27 @@
 
         if (nextSausagePreview) nextSausagePreview.destroy();
         const nextInfo = SAUSAGE_TYPES[nextTypeIndex];
-        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70, 160, nextInfo.key);
+        nextSausagePreview = scene.add.image(BOARD_WIDTH + 70 * SCALE, 160 * SCALE, nextInfo.key);
 
-        const maxPreviewSize = 80;
+        const maxPreviewSize = 80 * SCALE;
         const maxDimension = Math.max(nextSausagePreview.width, nextSausagePreview.height);
         nextSausagePreview.setScale(maxPreviewSize / maxDimension);
 
         currentSausageSprite = createPreviewSprite(scene, typeInfo);
 
-        const pointer = scene.input.activePointer;
+        const activePointer = scene.input.activePointer;
+        const worldPoint = scene.cameras.main.getWorldPoint(activePointer.x, activePointer.y);
         const currentRadius = typeInfo.radius;
-        const minX = currentRadius + 5;
-        const maxX = BOARD_WIDTH - currentRadius - 5;
+        const minX = currentRadius + 5 * SCALE;
+        const maxX = BOARD_WIDTH - currentRadius - 5 * SCALE;
+
         const initialX =
-          pointer && pointer.x > 0 && pointer.x < BOARD_WIDTH
-            ? Phaser.Math.Clamp(pointer.x, minX, maxX)
+          activePointer && activePointer.x > 0 && worldPoint.x < BOARD_WIDTH
+            ? Phaser.Math.Clamp(worldPoint.x, minX, maxX)
             : BOARD_WIDTH / 2;
 
         currentSausageSprite.x = initialX;
-        currentSausageSprite.y = 60;
+        currentSausageSprite.y = 60 * SCALE;
       }
 
       function createPreviewSprite(scene, typeInfo) {
@@ -427,7 +452,7 @@
           friction: 0.5,
           frictionStatic: 1.0,
           density: 0.005,
-          slop: 0.05,
+          slop: 0.05 * SCALE,
         };
 
         if (shapeData) {
@@ -491,23 +516,23 @@
         overlay.fillStyle(0x000000, 0.75);
         overlay.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
 
-        scene.add.text(BOARD_WIDTH / 2 - 90, GAME_HEIGHT / 2 - 70, 'GAME OVER', {
-          fontSize: '32px',
+        scene.add.text(BOARD_WIDTH / 2 - 90 * SCALE, GAME_HEIGHT / 2 - 70 * SCALE, 'GAME OVER', {
+          fontSize: `${32 * SCALE}px`,
           fill: '#ff4444',
           fontStyle: 'bold',
         });
 
-        scene.add.text(BOARD_WIDTH / 2 - 60, GAME_HEIGHT / 2 - 20, 'Score: ' + score, {
-          fontSize: '22px',
+        scene.add.text(BOARD_WIDTH / 2 - 60 * SCALE, GAME_HEIGHT / 2 - 20 * SCALE, 'Score: ' + score, {
+          fontSize: `${22 * SCALE}px`,
           fill: '#ffffff',
         });
 
         const restartBtn = scene.add
-          .text(BOARD_WIDTH / 2 - 65, GAME_HEIGHT / 2 + 40, ' REJOUER ', {
-            fontSize: '20px',
+          .text(BOARD_WIDTH / 2 - 65 * SCALE, GAME_HEIGHT / 2 + 40 * SCALE, ' REJOUER ', {
+            fontSize: `${20 * SCALE}px`,
             fill: '#181412',
             backgroundColor: '#ffca28',
-            padding: { x: 15, y: 10 },
+            padding: { x: 15 * SCALE, y: 10 * SCALE },
           })
           .setInteractive({ useHandCursor: true });
 
