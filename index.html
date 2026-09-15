@@ -2,18 +2,17 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <!-- Meta Viewport optimisé pour bloquer les gestes tactiles non désirés (double tap zoom, pinch zoom, etc.) -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>Suika Sausage Game - Mobile Ready</title>
+    <title>Suika Sausage Game - Pop Sound</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
       * {
         box-sizing: border-box;
-        -webkit-touch-callout: none; /* Désactive le menu contextuel sur appui long iOS */
-        -webkit-user-select: none; /* Désactive la sélection de texte */
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
         user-select: none;
       }
       html,
@@ -29,7 +28,7 @@
         align-items: center;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         transition: background 0.3s ease;
-        touch-action: none; /* Empêche le défilement et le pull-to-refresh mobile */
+        touch-action: none;
       }
       body.light-theme {
         background: #e0e0e0;
@@ -45,7 +44,6 @@
   </head>
   <body>
     <script>
-      // Facteur de résolution (HiDPI / Retina). 2 = Ultra Net sur mobile & desktop
       const SCALE = 2;
 
       const BASE_SAUSAGE_TYPES = [
@@ -67,7 +65,6 @@
         radius: type.radius * SCALE,
       }));
 
-      // Dimensions virtuelles haute définition
       const BOARD_WIDTH = 340 * SCALE;
       const CANVAS_WIDTH = 480 * SCALE;
       const GAME_HEIGHT = 620 * SCALE;
@@ -112,9 +109,8 @@
             debug: false,
           },
         },
-        // Activation explicite du moteur d'entrées tactiles
         input: {
-          activePointers: 1, // Limite à un seul point d'interaction pour éviter les faux drop multi-touch
+          activePointers: 1,
           touch: {
             capture: true,
           },
@@ -219,7 +215,6 @@
         nextTypeIndex = getRandomNextIndex();
         spawnNextSausage(this);
 
-        // Déplacement (Souris & Toucher continu)
         const updatePosition = (pointer) => {
           if (canDrop && currentSausageSprite && !gameOver) {
             const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
@@ -235,17 +230,14 @@
         this.input.on('pointermove', updatePosition);
         this.input.on('pointerdown', (pointer) => {
           const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-          // Ignorer les clics/touches sur la zone UI à droite
           if (worldPoint.x > BOARD_WIDTH) return;
           updatePosition(pointer);
         });
 
-        // Relâchement (Toucher relevé ou clic relâché) = Lâcher la saucisse
         this.input.on('pointerup', (pointer) => {
           const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
           if (worldPoint.x > BOARD_WIDTH || !canDrop || gameOver) return;
 
-          // Déverrouillage Audio WebContext sur iOS/Android au premier tap
           if (this.sound.context && this.sound.context.state === 'suspended') {
             this.sound.context.resume();
           }
@@ -283,6 +275,9 @@
                 bodyA.isMarkedForDelete = true;
                 bodyB.isMarkedForDelete = true;
 
+                // Jouer l'effet sonore de Pop
+                playPopSound(this, currentIndex);
+
                 if (currentIndex < SAUSAGE_TYPES.length - 1) {
                   const newX = (bodyA.position.x + bodyB.position.x) / 2;
                   const newY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -308,6 +303,38 @@
             }
           });
         });
+      }
+
+      // Générateur audio synthétique de "Pop" basé sur Web Audio API (aucun asset externe requis)
+      function playPopSound(scene, levelIndex = 0) {
+        if (isMuted) return;
+
+        try {
+          const audioCtx = scene.sound.context;
+          if (!audioCtx) return;
+
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          // Fréquence qui s'adapte légèrement au niveau de la saucisse (plus c'est gros, plus c'est grave)
+          const baseFreq = 420 - levelIndex * 18;
+          const endFreq = baseFreq + 220;
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + 0.08);
+
+          gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.08);
+        } catch (e) {
+          // Fallback silencieux en cas d'erreur audio
+        }
       }
 
       function updateScoreDisplay() {
