@@ -421,7 +421,7 @@ function update(time, delta) {
       }
     }
   });
-  console.log(`Overflow Timer: ${state.overflowTimer.toFixed(2)} ms, Overflowing: ${isOverflowing}`);
+
   // Décompte avant déclenchement du Game Over
   if (isOverflowing) {
     state.overflowTimer += delta;
