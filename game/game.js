@@ -1,25 +1,17 @@
 import {
-  SCALE,
-  BOARD_WIDTH,
   BOARD_HEIGHT,
-  CANVAS_WIDTH,
+  BOARD_WIDTH,
   CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  GAME_OVER_LINE_Y,
+  SCALE,
   boardX,
   boardY,
-  GAME_OVER_LINE_Y,
-  supabaseClient,
 } from './config.js';
+import { supabaseClient } from '../shared/supabaseClient.js';
 import { MERGE_SETS, getLeaderboardTable } from './sets.js';
 import { state } from './state.js';
-import {
-  uiElements,
-  createUI,
-  applyTheme,
-  fetchLeaderboard,
-  getNextPreviewPos,
-  getWheelCenter,
-  positionUIElements,
-} from './ui.js';
+import { applyTheme, createUI, fetchLeaderboard, getNextPreviewPos, getWheelCenter, uiElements } from './ui.js';
 
 const config = {
   type: Phaser.AUTO,

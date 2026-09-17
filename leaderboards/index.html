@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Classements - Jeux</title>
+    <link rel="stylesheet" href="leaderboards.css" />
+  </head>
+  <body>
+    <!-- Conteneur principal calé entre les bordures latérales de 34px -->
+    <div class="leaderboard-page-container">
+      <header class="page-header">
+        <a href="../" class="back-link">← RETOUR AU JEU</a>
+        <h1>CLASSEMENT</h1>
+      </header>
+
+      <!-- Sélecteur d'onglets pour chaque jeu -->
+      <nav class="game-tabs" id="game-tabs"></nav>
+
+      <!-- Tableau des scores -->
+      <main class="leaderboard-card">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th class="col-rank">#</th>
+              <th class="col-player">JOUEUR</th>
+              <th class="col-score">SCORE</th>
+              <th class="col-date">DATE</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-rows">
+            <!-- Les lignes seront injectées par JavaScript -->
+          </tbody>
+        </table>
+      </main>
+    </div>
+  </body>
+  <script type="module" src="leaderboards.js"></script>
+</html>

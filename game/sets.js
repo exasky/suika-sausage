@@ -2,6 +2,7 @@ import { SCALE } from './config.js';
 
 export const MERGE_SETS = {
   sausages: {
+    label: 'Saucisses', // Nom affiché dans les onglets UI
     leaderboardTable: 'leaderboard_sausages', // Nom de ta table Supabase
     bgmUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
     bgImage: 'assets/sausages/bg.jpg',
@@ -20,6 +21,7 @@ export const MERGE_SETS = {
     ],
   },
   explosives: {
+    label: 'Explosifs',
     leaderboardTable: 'leaderboard_explosives', // Nom de ta table Supabase
     bgmUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
     bgImage: 'assets/explosives/bg.jpg',
@@ -38,6 +40,7 @@ export const MERGE_SETS = {
     ],
   },
   cheeses: {
+    label: 'Fromages',
     leaderboardTable: 'leaderboard_cheeses',
     // Musique chill / accordéon & guitare acoustique
     bgmUrl: 'https://cdn.pixabay.com/audio/2026/08/22/audio_3ebc293155.mp3',

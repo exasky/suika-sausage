@@ -1,7 +1,3 @@
-export const SUPABASE_URL = 'https://uhetyyqtzubgtuljskyw.supabase.co';
-export const SUPABASE_ANON_KEY = 'sb_publishable_1hTCx4BqfqhprfF1snrj_A_pJxCWYAB';
-export const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 export const SCALE = 2;
 
 // --- CALCUL RESPONSIVE ---

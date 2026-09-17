@@ -1,0 +1,180 @@
+:root {
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --border-color: #333;
+  --accent-color: #ffb703;
+  --text-color: #ffffff;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Alignement du contenu principal entre les bordures de 34px */
+.leaderboard-page-container {
+  max-width: 480px; /* Taille habituelle du canvas */
+  margin: 0 auto;
+  padding: 20px 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* En-tête */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.back-link {
+  color: #a0a0b0;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #ffffff;
+}
+
+body.light-theme .back-link {
+  color: #555566;
+}
+
+body.light-theme .back-link:hover {
+  color: #000000;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #ffffff;
+}
+
+body.light-theme .page-header h1 {
+  color: #111111;
+}
+
+/* Onglets des jeux */
+.game-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cccccc;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+body.light-theme .tab-btn {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #444444;
+}
+
+body.light-theme .tab-btn.active {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
+}
+
+/* Conteneur de la carte de score */
+.leaderboard-card {
+  background: rgba(20, 20, 25, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  margin: 0 10px;
+}
+
+body.light-theme .leaderboard-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Tableau */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+.leaderboard-table th {
+  text-align: left;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  color: #888899;
+}
+
+body.light-theme .leaderboard-table th {
+  border-bottom-color: rgba(0, 0, 0, 0.15);
+  color: #666677;
+}
+
+.leaderboard-table td {
+  padding: 12px 0;
+  color: #ffffff;
+}
+
+body.light-theme .leaderboard-table td {
+  color: #111111;
+}
+
+.leaderboard-table tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .leaderboard-table tr:not(:last-child) td {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+
+.col-rank {
+  width: 10%;
+}
+.col-player {
+  width: 45%;
+}
+.col-score {
+  width: 25%;
+}
+.col-date {
+  width: 20%;
+  text-align: right;
+}
+.leaderboard-table td.col-date {
+  text-align: right;
+}

@@ -1,16 +1,16 @@
-import { state } from './state.js';
-import { getLeaderboardTable } from './sets.js';
+import { supabaseClient } from '../shared/supabaseClient.js';
 import {
-  SCALE,
-  CANVAS_WIDTH,
-  CANVAS_HEIGHT,
-  BOARD_WIDTH,
   BOARD_HEIGHT,
+  BOARD_WIDTH,
   boardX,
   boardY,
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
   isMobilePortrait,
-  supabaseClient,
+  SCALE,
 } from './config.js';
+import { getLeaderboardTable } from './sets.js';
+import { state } from './state.js';
 
 export let uiElements = {};
 
