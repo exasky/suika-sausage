@@ -53,6 +53,9 @@ function preload() {
   if (currentSet.bgImage) {
     this.load.image('set_background', currentSet.bgImage);
   }
+  if (currentSet.popSoundUrl) {
+    this.load.audio(`pop_${state.currentSetKey}`, currentSet.popSoundUrl);
+  }
 
   currentSet.items.forEach((type) => {
     this.load.image(type.key, `assets/${state.currentSetKey}/${type.key}.png`);
@@ -259,28 +262,47 @@ function createEvolutionWheel(scene) {
 
 function playPopSound(scene, levelIndex = 0) {
   if (state.isMuted) return;
+
+  const currentSetKey = state.currentSetKey;
+  const soundKey = `pop_${currentSetKey}`;
+  if (scene.cache.audio.has(soundKey)) {
+    // Pitch de base légerement plus aigu pour les petits objets, plus grave pour les gros
+    const baseDetune = (10 - levelIndex) * 30; // ex: +300 cents à -300 cents
+
+    // Variation aléatoire de ±120 cents (environ un ton au-dessus/en-dessous)
+    const randomJitter = Math.floor(Math.random() * 240) - 120;
+
+    scene.sound.play(soundKey, {
+      volume: 0.6,
+      detune: baseDetune + randomJitter, // Module la tonalité/pitch du MP3
+    });
+    return;
+  }
+
   try {
     const audioCtx = scene.sound.context;
     if (!audioCtx) return;
 
+    const pitchVariation = 1 + (Math.random() * 0.16 - 0.08);
+    const duration = 0.08 * pitchVariation;
+    const baseFreq = (420 - levelIndex * 18) * pitchVariation;
+    const endFreq = baseFreq + 220 * pitchVariation;
+
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
-    const baseFreq = 420 - levelIndex * 18;
-    const endFreq = baseFreq + 220;
-
     osc.type = 'sine';
     osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
 
     gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.08);
+    osc.stop(audioCtx.currentTime + duration);
   } catch (e) {}
 }
 

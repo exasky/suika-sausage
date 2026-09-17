@@ -59,6 +59,27 @@ export const MERGE_SETS = {
       { key: '11_meule_comte', name: 'Meule de Comté', radius: 105, score: 66 },
     ],
   },
+  cats: {
+    label: 'Chats',
+    leaderboardTable: 'leaderboard_cats',
+    // Musique lo-fi / ronronnement chill
+    bgmUrl: 'https://cdn.pixabay.com/audio/2025/03/28/audio_4c6fae9084.mp3',
+    bgImage: 'assets/cats/bg.jpg',
+    popSoundUrl: 'https://cdn.pixabay.com/audio/2026/01/03/audio_f6c8585800.mp3', // Petit miaou court
+    items: [
+      { key: '1_chaton', name: 'Chaton', radius: 14, score: 1 },
+      { key: '2_singapura', name: 'Singapura', radius: 20, score: 3 },
+      { key: '3_munchkin', name: 'Munchkin', radius: 28, score: 6 },
+      { key: '4_siamois', name: 'Siamois', radius: 38, score: 10 },
+      { key: '5_sphynx', name: 'Sphynx', radius: 48, score: 15 },
+      { key: '6_europien', name: 'Européen', radius: 60, score: 21 },
+      { key: '7_chartreux', name: 'Chartreux', radius: 73, score: 28 },
+      { key: '8_bengal', name: 'Bengal', radius: 86, score: 36 },
+      { key: '9_persan', name: 'Persan', radius: 98, score: 45 },
+      { key: '10_ragdoll', name: 'Ragdoll', radius: 110, score: 55 },
+      { key: '11_maine_coon', name: 'Maine Coon', radius: 125, score: 66 },
+    ],
+  },
 };
 
 export function getScaledSet(setKey) {
