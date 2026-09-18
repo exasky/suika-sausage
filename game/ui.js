@@ -339,10 +339,17 @@ export function updateTimerDisplay(model, seconds = model.elapsedTime) {
   }
 }
 
+/**
+ *
+ * @param {Phaser.Scene} scene
+ * @param {*} model
+ * @param {*} param2
+ */
 export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
   const overlay = scene.add.graphics();
   overlay.fillStyle(0x000000, 0.88);
   overlay.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  overlay.setDepth(1000);
 
   const centerX = CANVAS_WIDTH / 2;
   scene.add
@@ -351,6 +358,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
       fill: '#ff4444',
       fontStyle: 'bold',
     })
+    .setDepth(1001)
     .setOrigin(0.5);
 
   scene.add
@@ -359,11 +367,13 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
       fill: '#ffffff',
       fontStyle: 'bold',
     })
+    .setDepth(1001)
     .setOrigin(0.5);
 
   let playerPseudo = (localStorage.getItem('sausage_player_name') || 'JOUEUR').substring(0, 10).toUpperCase();
   const statusText = scene.add
     .text(centerX, 185 * SCALE, '', { fontSize: `${11 * SCALE}px`, fill: '#aaa' })
+    .setDepth(1001)
     .setOrigin(0.5);
   const pseudoDisplay = scene.add
     .text(centerX, 155 * SCALE, `${playerPseudo}_`, {
@@ -373,6 +383,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
       backgroundColor: '#222222',
       padding: { x: 15 * SCALE, y: 5 * SCALE },
     })
+    .setDepth(1001)
     .setOrigin(0.5);
 
   scene.add
@@ -380,6 +391,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
       fontSize: `${11 * SCALE}px`,
       fill: '#888888',
     })
+    .setDepth(1001)
     .setOrigin(0.5);
 
   const keyboardKeys = [
@@ -413,6 +425,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
           align: 'center',
         })
         .setOrigin(0.5)
+        .setDepth(1001)
         .setInteractive({ useHandCursor: true });
 
       keyButton.on('pointerdown', () => {
@@ -435,6 +448,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
       padding: { x: 15 * SCALE, y: 8 * SCALE },
     })
     .setOrigin(0.5)
+    .setDepth(1001)
     .setInteractive({ useHandCursor: true });
 
   let isSubmitting = false;
@@ -468,6 +482,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
       padding: { x: 15 * SCALE, y: 8 * SCALE },
     })
     .setOrigin(0.5)
+    .setDepth(1001)
     .setInteractive({ useHandCursor: true })
     .on('pointerdown', onRestart);
 }

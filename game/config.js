@@ -13,4 +13,3 @@ export const CANVAS_WIDTH = isMobilePortrait ? BOARD_WIDTH : BOARD_WIDTH + 140 *
 export const CANVAS_HEIGHT = isMobilePortrait ? BOARD_HEIGHT + 260 * SCALE : BOARD_HEIGHT;
 
 export const GAME_OVER_LINE_Y = boardY + 110 * SCALE;
-// export const GAME_OVER_LINE_Y = boardY + 550 * SCALE; // Debug test rapide game over
