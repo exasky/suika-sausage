@@ -322,11 +322,7 @@ class MergeGameScene extends Phaser.Scene {
   updateScoreDisplay() {
     const state = this.state;
     if (uiElements.scoreText) uiElements.scoreText.setText(state.score);
-    if (state.score > state.highScore) {
-      state.highScore = state.score;
-      if (uiElements.highScoreText) uiElements.highScoreText.setText(state.highScore);
-      localStorage.setItem(`high_score_${state.currentSetKey}`, state.highScore);
-    }
+    if (uiElements.highScoreText) uiElements.highScoreText.setText(state.highScore);
   }
 
   async loadLeaderboard() {
