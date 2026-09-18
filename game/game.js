@@ -10,8 +10,16 @@ import {
 } from './config.js';
 import { supabaseClient } from '../shared/supabaseClient.js';
 import { MERGE_SETS, getLeaderboardTable } from './sets.js';
-import { state } from './state.js';
-import { applyTheme, createUI, fetchLeaderboard, getNextPreviewPos, getWheelCenter, uiElements } from './ui.js';
+import { pauseTimer, startTimer, state, stopTimer } from './state.js';
+import {
+  applyTheme,
+  createUI,
+  fetchLeaderboard,
+  getNextPreviewPos,
+  getWheelCenter,
+  uiElements,
+  updateTimerDisplay,
+} from './ui.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -160,6 +168,9 @@ function create() {
       this.sound.unlock();
       state.bgMusic.play();
     }
+    if (!state.isTimerRunning) {
+      startTimer((seconds) => updateTimerDisplay(seconds));
+    }
 
     state.canDrop = false;
     const dropX = state.currentSausageSprite.x;
@@ -176,6 +187,9 @@ function create() {
       }
     });
   });
+
+  window.addEventListener('blur', () => pauseTimer());
+  window.addEventListener('focus', () => !state.gameOver && startTimer((seconds) => updateTimerDisplay(seconds)));
 
   // --- Gestion des collisions et fusions ---
   this.matter.world.on('collisionstart', (event) => {
@@ -481,6 +495,8 @@ function destroySausageBody(scene, body) {
 function triggerGameOver(scene) {
   state.gameOver = true;
   state.aimLine.clear();
+
+  stopTimer();
 
   const overlay = scene.add.graphics();
   overlay.fillStyle(0x000000, 0.88);

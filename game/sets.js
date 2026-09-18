@@ -63,7 +63,7 @@ export const MERGE_SETS = {
     label: 'Chats',
     leaderboardTable: 'leaderboard_cats',
     // Musique lo-fi / ronronnement chill
-    bgmUrl: 'https://cdn.pixabay.com/audio/2025/03/28/audio_4c6fae9084.mp3',
+    bgmUrl: 'https://cdn.pixabay.com/audio/2025/02/21/audio_8fb7a20b57.mp3',
     bgImage: 'assets/cats/bg.jpg',
     popSoundUrl: 'https://cdn.pixabay.com/audio/2026/01/03/audio_f6c8585800.mp3', // Petit miaou court
     items: [

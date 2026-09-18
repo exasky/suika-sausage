@@ -80,6 +80,11 @@ export function positionUIElements() {
     const soundLabel = state.isMuted ? ' 🔇 ' : ' 🔊 ';
     if (uiElements.soundBtnText) uiElements.soundBtnText.setText(soundLabel).setPosition(105 * SCALE, 6 * SCALE);
 
+    const rightX = BOARD_WIDTH - 10;
+    if (uiElements.timerText) {
+      uiElements.timerText.setPosition(rightX - uiElements.timerText.width - 10 * SCALE, 10 * SCALE);
+    }
+
     // Leaderboard & Suivante
     if (uiElements.leaderLabel) uiElements.leaderLabel.setPosition(10 * SCALE, 45 * SCALE);
     state.topScoresTexts.forEach((txt, i) => txt?.setPosition(10 * SCALE, (62 + i * 15) * SCALE));
@@ -102,6 +107,9 @@ export function positionUIElements() {
     const uiX = BOARD_WIDTH + 15 * SCALE;
 
     if (uiElements.homeBtnText) uiElements.homeBtnText.setText(' 🏠 MENU ').setPosition(10 * SCALE, 8 * SCALE);
+    if (uiElements.timerText) {
+      uiElements.timerText.setPosition(BOARD_WIDTH - uiElements.timerText.width - 10 * SCALE, 12.5 * SCALE);
+    }
 
     const themeLabel = state.isDarkMode ? ' 🌙 DARK ' : ' ☀️ LIGHT ';
     if (uiElements.themeBtnText) uiElements.themeBtnText.setText(themeLabel).setPosition(uiX, 12 * SCALE);
@@ -197,6 +205,8 @@ export function createUI(scene) {
     .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
     .setWordWrapWidth(110 * SCALE);
   uiElements.wheelLabel = scene.add.text(0, 0, 'ÉVOLUTION', { fontSize: fontS, fontStyle: 'bold' });
+
+  uiElements.timerText = scene.add.text(0, 0, '00:00', { fontSize: fontM, fontStyle: 'bold' });
 
   positionUIElements();
 }
@@ -337,4 +347,23 @@ export async function fetchLeaderboard() {
   } catch (e) {
     console.error('Erreur Supabase (Leaderboard) :', e.message || e);
   }
+}
+
+export function updateTimerDisplay() {
+  if (uiElements.timerText) {
+    uiElements.timerText.setText(formatTime(state.elapsedTime));
+  }
+}
+
+function formatTime(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (num) => String(num).padStart(2, '0');
+
+  if (hours > 0) {
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  return `${pad(minutes)}:${pad(seconds)}`;
 }

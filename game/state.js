@@ -19,6 +19,10 @@ export const state = {
   isDarkMode: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches,
   wheelSprites: [],
   topScoresTexts: [],
+  // Timer
+  elapsedTime: 0,
+  timerInterval: null,
+  isTimerRunning: false,
 };
 
 export function loadCurrentSet() {
@@ -28,3 +32,34 @@ export function loadCurrentSet() {
 }
 
 loadCurrentSet();
+
+//region Timer
+export function startTimer(onTick) {
+  if (!state.isTimerRunning) {
+    state.isTimerRunning = true;
+    state.timerInterval = setInterval(() => {
+      state.elapsedTime += 1;
+      if (onTick) onTick(state.elapsedTime);
+    }, 1000);
+  }
+}
+
+export function pauseTimer() {
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+  state.isTimerRunning = false;
+}
+
+export function stopTimer() {
+  pauseTimer();
+  state.elapsedTime = 0;
+}
+
+export function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+//endregion Timer
