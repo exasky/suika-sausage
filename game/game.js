@@ -22,7 +22,7 @@ import {
   updateTimerDisplay,
 } from './ui.js';
 
-import * as Phaser from 'https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.esm.js';
+import * as Phaser from 'https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.esm.min.js';
 
 class MergeGameScene extends Phaser.Scene {
   constructor() {
@@ -175,11 +175,16 @@ class MergeGameScene extends Phaser.Scene {
       });
     });
 
-    window.addEventListener('blur', () => this.model.pauseTimer());
-    window.addEventListener(
-      'focus',
-      () => !state.gameOver && this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds)),
-    );
+    window.addEventListener('blur', () => {
+      this.game.pause();
+      this.model.pauseTimer();
+    });
+    window.addEventListener('focus', () => {
+      this.game.resume();
+      if (!state.gameOver) {
+        this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds));
+      }
+    });
 
     // --- Gestion des collisions et fusions ---
     this.matter.world.on('collisionstart', (event) => {
@@ -529,7 +534,7 @@ const config = {
     default: 'matter',
     matter: {
       gravity: { y: 1.5 * SCALE },
-      runner: { isFixed: true, fps: 120 },
+      runner: { fps: 120 },
       positionIterations: 20,
       velocityIterations: 20,
       constraintIterations: 10,
