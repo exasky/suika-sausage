@@ -1,4 +1,3 @@
-import { supabaseClient } from '../shared/supabaseClient.js';
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -9,8 +8,6 @@ import {
   isMobilePortrait,
   SCALE,
 } from './config.js';
-import { getLeaderboardTable } from './sets.js';
-import { state } from './state.js';
 
 export let uiElements = {};
 
@@ -69,15 +66,15 @@ export function getNextPreviewPos() {
 }
 
 // --- POSITIONNEMENT DYNAMIQUE DE L'UI ---
-export function positionUIElements() {
+export function positionUIElements(model) {
   if (isMobilePortrait) {
     // Top Bar compacte
     if (uiElements.homeBtnText) uiElements.homeBtnText.setText(' 🏠 ').setPosition(5 * SCALE, 6 * SCALE);
 
-    const themeLabel = state.isDarkMode ? ' 🌙 ' : ' ☀️ ';
+    const themeLabel = model.isDarkMode ? ' 🌙 ' : ' ☀️ ';
     if (uiElements.themeBtnText) uiElements.themeBtnText.setText(themeLabel).setPosition(55 * SCALE, 6 * SCALE);
 
-    const soundLabel = state.isMuted ? ' 🔇 ' : ' 🔊 ';
+    const soundLabel = model.isMuted ? ' 🔇 ' : ' 🔊 ';
     if (uiElements.soundBtnText) uiElements.soundBtnText.setText(soundLabel).setPosition(105 * SCALE, 6 * SCALE);
 
     const rightX = BOARD_WIDTH - 10;
@@ -87,7 +84,7 @@ export function positionUIElements() {
 
     // Leaderboard & Suivante
     if (uiElements.leaderLabel) uiElements.leaderLabel.setPosition(10 * SCALE, 45 * SCALE);
-    state.topScoresTexts.forEach((txt, i) => txt?.setPosition(10 * SCALE, (62 + i * 15) * SCALE));
+    uiElements.topScoresTexts.forEach((txt, i) => txt?.setPosition(10 * SCALE, (62 + i * 15) * SCALE));
 
     if (uiElements.nextLabel) uiElements.nextLabel.setPosition(BOARD_WIDTH - 110 * SCALE, 45 * SCALE);
 
@@ -111,14 +108,14 @@ export function positionUIElements() {
       uiElements.timerText.setPosition(BOARD_WIDTH - uiElements.timerText.width - 10 * SCALE, 12.5 * SCALE);
     }
 
-    const themeLabel = state.isDarkMode ? ' 🌙 DARK ' : ' ☀️ LIGHT ';
+    const themeLabel = model.isDarkMode ? ' 🌙 DARK ' : ' ☀️ LIGHT ';
     if (uiElements.themeBtnText) uiElements.themeBtnText.setText(themeLabel).setPosition(uiX, 12 * SCALE);
 
-    const soundLabel = state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
+    const soundLabel = model.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
     if (uiElements.soundBtnText) uiElements.soundBtnText.setText(soundLabel).setPosition(uiX, 42 * SCALE);
 
     if (uiElements.leaderLabel) uiElements.leaderLabel.setPosition(uiX, 75 * SCALE);
-    state.topScoresTexts.forEach((txt, i) => txt?.setPosition(uiX, (92 + i * 15) * SCALE));
+    uiElements.topScoresTexts.forEach((txt, i) => txt?.setPosition(uiX, (92 + i * 15) * SCALE));
 
     if (uiElements.nextLabel) uiElements.nextLabel.setPosition(uiX, 150 * SCALE);
 
@@ -133,7 +130,7 @@ export function positionUIElements() {
 }
 
 // --- CREATION DE L'UI ---
-export function createUI(scene) {
+export function createUI(scene, model) {
   // Arrière-plans
   uiElements.bgContainer = scene.add.graphics().setDepth(-3);
 
@@ -169,14 +166,14 @@ export function createUI(scene) {
   });
 
   uiElements.themeBtnText = createButton('', () => {
-    state.isDarkMode = !state.isDarkMode;
-    applyTheme(scene);
+    model.isDarkMode = !model.isDarkMode;
+    applyTheme(scene, model);
   });
 
   uiElements.soundBtnText = createButton(' 🔊 SON ', () => {
-    state.isMuted = !state.isMuted;
-    scene.sound.mute = state.isMuted;
-    const soundLabel = isMobilePortrait ? (state.isMuted ? ' 🔇 ' : ' 🔊 ') : state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
+    model.isMuted = !model.isMuted;
+    scene.sound.mute = model.isMuted;
+    const soundLabel = isMobilePortrait ? (model.isMuted ? ' 🔇 ' : ' 🔊 ') : model.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
     uiElements.soundBtnText.setText(soundLabel);
   });
 
@@ -192,7 +189,7 @@ export function createUI(scene) {
     fontStyle: 'bold',
   });
 
-  state.topScoresTexts = [1, 2, 3].map((num) =>
+  uiElements.topScoresTexts = [1, 2, 3].map((num) =>
     scene.add.text(0, 0, `${num}. ---`, { fontFamily: 'monospace', fontSize: `${11 * SCALE}px` }),
   );
 
@@ -200,7 +197,7 @@ export function createUI(scene) {
   uiElements.scoreLabel = scene.add.text(0, 0, 'SCORE', { fontSize: fontS, fontStyle: 'bold' });
   uiElements.scoreText = scene.add.text(0, 0, '0', { fontSize: fontL, fontStyle: 'bold' });
   uiElements.highLabel = scene.add.text(0, 0, 'RECORD', { fontSize: fontS, fontStyle: 'bold' });
-  uiElements.highScoreText = scene.add.text(0, 0, state.highScore, { fontSize: fontM });
+  uiElements.highScoreText = scene.add.text(0, 0, model.highScore, { fontSize: fontM });
   uiElements.sausNameText = scene.add
     .text(0, 0, '', { fontSize: fontS, fontStyle: 'bold' })
     .setWordWrapWidth(110 * SCALE);
@@ -208,7 +205,7 @@ export function createUI(scene) {
 
   uiElements.timerText = scene.add.text(0, 0, '00:00', { fontSize: fontM, fontStyle: 'bold' });
 
-  positionUIElements();
+  positionUIElements(model);
 }
 
 // --- DESSIN DU CERCLE D'ÉVOLUTION ---
@@ -250,9 +247,9 @@ function drawWheelGraphics(colors) {
 }
 
 // --- APPLICATION DU THÈME ---
-export function applyTheme(scene) {
-  document.body.classList.toggle('light-theme', !state.isDarkMode);
-  const colors = state.isDarkMode ? THEMES.dark : THEMES.light;
+export function applyTheme(scene, model) {
+  document.body.classList.toggle('light-theme', !model.isDarkMode);
+  const colors = model.isDarkMode ? THEMES.dark : THEMES.light;
 
   // 1. Nettoyage des graphics
   uiElements.bgContainer.clear();
@@ -265,12 +262,12 @@ export function applyTheme(scene) {
   if (uiElements.boardBg && scene.textures.exists('set_background')) {
     // Si l'image existe, on lui applique une teinte selon le mode (ou rien en Light)
     // Dark mode : assombrit l'image / Light mode : couleur d'origine (0xffffff)
-    const tintColor = state.isDarkMode ? 0x999999 : 0xffffff;
+    const tintColor = model.isDarkMode ? 0x999999 : 0xffffff;
     uiElements.boardBg.setTint(tintColor);
 
     // Voile optionnel sur l'aire de jeu pour ajuster le contraste
-    const overlayColor = state.isDarkMode ? 0x000000 : 0xffffff;
-    const overlayAlpha = state.isDarkMode ? 0.5 : 0.2;
+    const overlayColor = model.isDarkMode ? 0x000000 : 0xffffff;
+    const overlayAlpha = model.isDarkMode ? 0.5 : 0.2;
     uiElements.uiBg.fillStyle(overlayColor, overlayAlpha).fillRect(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT);
   } else {
     // Fallback sans image : couleur unie
@@ -297,7 +294,7 @@ export function applyTheme(scene) {
 
   // Couleurs des textes
   uiElements.leaderLabel.setColor(colors.scoreText);
-  state.topScoresTexts.forEach((t) => t.setColor(colors.btnText));
+  uiElements.topScoresTexts.forEach((t) => t.setColor(colors.btnText));
 
   if (uiElements.homeBtnText) {
     uiElements.homeBtnText.setColor(colors.btnText).setBackgroundColor(colors.btnBg);
@@ -313,46 +310,181 @@ export function applyTheme(scene) {
 
   // Labels boutons dynamique
   if (uiElements.themeBtnText) {
-    const themeLabel = isMobilePortrait ? (state.isDarkMode ? ' 🌙 ' : ' ☀️ ') : colors.btnLabel;
+    const themeLabel = isMobilePortrait ? (model.isDarkMode ? ' 🌙 ' : ' ☀️ ') : colors.btnLabel;
     uiElements.themeBtnText.setText(themeLabel).setColor(colors.btnText).setBackgroundColor(colors.btnBg);
   }
 
   if (uiElements.soundBtnText) {
-    const soundLabel = isMobilePortrait ? (state.isMuted ? ' 🔇 ' : ' 🔊 ') : state.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
+    const soundLabel = isMobilePortrait ? (model.isMuted ? ' 🔇 ' : ' 🔊 ') : model.isMuted ? ' 🔇 MUET ' : ' 🔊 SON ';
     uiElements.soundBtnText.setText(soundLabel).setColor(colors.btnText).setBackgroundColor(colors.btnBg);
   }
 }
 
 // --- APPEL API LEADERBOARD ---
-export async function fetchLeaderboard() {
-  const table = getLeaderboardTable(state.currentSetKey);
-  try {
-    const { data, error } = await supabaseClient
-      .from(table)
-      .select('name, score')
-      .order('score', { ascending: false })
-      .limit(3);
+export function renderLeaderboard(data = []) {
+  uiElements.topScoresTexts.forEach((textObj, index) => {
+    const entry = data?.[index];
+    if (entry) {
+      const name = entry.name.length > 10 ? `${entry.name.substring(0, 8)}..` : entry.name;
+      textObj.setText(`${index + 1}. ${name} (${entry.score})`);
+    } else {
+      textObj.setText(`${index + 1}. ---`);
+    }
+  });
+}
 
-    if (error) throw error;
-
-    state.topScoresTexts.forEach((textObj, index) => {
-      const entry = data?.[index];
-      if (entry) {
-        const name = entry.name.length > 10 ? `${entry.name.substring(0, 8)}..` : entry.name;
-        textObj.setText(`${index + 1}. ${name} (${entry.score})`);
-      } else {
-        textObj.setText(`${index + 1}. ---`);
-      }
-    });
-  } catch (e) {
-    console.error('Erreur Supabase (Leaderboard) :', e.message || e);
+export function updateTimerDisplay(model, seconds = model.elapsedTime) {
+  if (uiElements.timerText) {
+    uiElements.timerText.setText(formatTime(seconds));
   }
 }
 
-export function updateTimerDisplay() {
-  if (uiElements.timerText) {
-    uiElements.timerText.setText(formatTime(state.elapsedTime));
-  }
+/**
+ *
+ * @param {Phaser.Scene} scene
+ * @param {*} model
+ * @param {*} param2
+ */
+export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
+  const overlay = scene.add.graphics();
+  overlay.fillStyle(0x000000, 0.88);
+  overlay.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  overlay.setDepth(1000);
+
+  const centerX = CANVAS_WIDTH / 2;
+  scene.add
+    .text(centerX, 50 * SCALE, 'GAME OVER', {
+      fontSize: `${28 * SCALE}px`,
+      fill: '#ff4444',
+      fontStyle: 'bold',
+    })
+    .setDepth(1001)
+    .setOrigin(0.5);
+
+  scene.add
+    .text(centerX, 90 * SCALE, `Score: ${model.score}`, {
+      fontSize: `${20 * SCALE}px`,
+      fill: '#ffffff',
+      fontStyle: 'bold',
+    })
+    .setDepth(1001)
+    .setOrigin(0.5);
+
+  let playerPseudo = (localStorage.getItem('sausage_player_name') || 'JOUEUR').substring(0, 10).toUpperCase();
+  const statusText = scene.add
+    .text(centerX, 185 * SCALE, '', { fontSize: `${11 * SCALE}px`, fill: '#aaa' })
+    .setDepth(1001)
+    .setOrigin(0.5);
+  const pseudoDisplay = scene.add
+    .text(centerX, 155 * SCALE, `${playerPseudo}_`, {
+      fontSize: `${20 * SCALE}px`,
+      fill: '#ffca28',
+      fontStyle: 'bold',
+      backgroundColor: '#222222',
+      padding: { x: 15 * SCALE, y: 5 * SCALE },
+    })
+    .setDepth(1001)
+    .setOrigin(0.5);
+
+  scene.add
+    .text(centerX, 130 * SCALE, 'VOTRE PSEUDO:', {
+      fontSize: `${11 * SCALE}px`,
+      fill: '#888888',
+    })
+    .setDepth(1001)
+    .setOrigin(0.5);
+
+  const keyboardKeys = [
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+    ['H', 'I', 'J', 'K', 'L', 'M', 'N'],
+    ['O', 'P', 'Q', 'R', 'S', 'T', 'U'],
+    ['V', 'W', 'X', 'Y', 'Z', '⌫'],
+  ];
+  const keyWidth = 32 * SCALE;
+  const keyHeight = 30 * SCALE;
+  const gap = 5 * SCALE;
+
+  const updatePseudoDisplay = () => {
+    pseudoDisplay.setText(playerPseudo + (playerPseudo.length < 10 ? '_' : ''));
+  };
+
+  keyboardKeys.forEach((row, rowIndex) => {
+    const rowWidth = row.length * keyWidth + (row.length - 1) * gap;
+    const startX = centerX - rowWidth / 2;
+    row.forEach((char, colIndex) => {
+      const x = startX + colIndex * (keyWidth + gap) + keyWidth / 2;
+      const y = 220 * SCALE + rowIndex * (keyHeight + gap) + keyHeight / 2;
+      const keyButton = scene.add
+        .text(x, y, char, {
+          fontSize: `${13 * SCALE}px`,
+          fontStyle: 'bold',
+          fill: char === '⌫' ? '#ff6b6b' : '#ffffff',
+          backgroundColor: '#333333',
+          fixedWidth: keyWidth,
+          fixedHeight: keyHeight,
+          align: 'center',
+        })
+        .setOrigin(0.5)
+        .setDepth(1001)
+        .setInteractive({ useHandCursor: true });
+
+      keyButton.on('pointerdown', () => {
+        if (char === '⌫') {
+          playerPseudo = playerPseudo.slice(0, -1);
+        } else if (playerPseudo.length < 10) {
+          playerPseudo += char;
+        }
+        updatePseudoDisplay();
+      });
+    });
+  });
+
+  const sendButton = scene.add
+    .text(centerX, 380 * SCALE, ' ENVOYER MON SCORE ', {
+      fontSize: `${15 * SCALE}px`,
+      fontStyle: 'bold',
+      fill: '#181412',
+      backgroundColor: '#ffca28',
+      padding: { x: 15 * SCALE, y: 8 * SCALE },
+    })
+    .setOrigin(0.5)
+    .setDepth(1001)
+    .setInteractive({ useHandCursor: true });
+
+  let isSubmitting = false;
+  sendButton.on('pointerdown', async () => {
+    if (isSubmitting) return;
+    if (!playerPseudo.trim()) {
+      statusText.setColor('#ff6b6b').setText('Veuillez entrer un pseudo !');
+      return;
+    }
+
+    isSubmitting = true;
+    sendButton.setAlpha(0.5);
+    statusText.setColor('#aaa').setText('Envoi du score...');
+    try {
+      await onSubmitScore(playerPseudo, model.score);
+      localStorage.setItem('sausage_player_name', playerPseudo);
+      statusText.setColor('#51cf66').setText('Score envoyé avec succès !');
+    } catch (error) {
+      console.error(error);
+      statusText.setColor('#ff6b6b').setText("Erreur lors de l'envoi");
+      isSubmitting = false;
+      sendButton.setAlpha(1);
+    }
+  });
+
+  scene.add
+    .text(centerX, 435 * SCALE, ' 🔄 REJOUER ', {
+      fontSize: `${15 * SCALE}px`,
+      fill: '#ffffff',
+      backgroundColor: '#444444',
+      padding: { x: 15 * SCALE, y: 8 * SCALE },
+    })
+    .setOrigin(0.5)
+    .setDepth(1001)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', onRestart);
 }
 
 function formatTime(totalSeconds) {

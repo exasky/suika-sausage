@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "phaser": "^4.2.1"
+  }
+}
