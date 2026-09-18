@@ -176,11 +176,9 @@ class MergeGameScene extends Phaser.Scene {
     });
 
     window.addEventListener('blur', () => {
-      this.game.pause();
       this.model.pauseTimer();
     });
     window.addEventListener('focus', () => {
-      this.game.resume();
       if (!state.gameOver) {
         this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds));
       }
