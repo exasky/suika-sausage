@@ -1,9 +1,27 @@
-import { getScaledSet } from './sets.js';
+import { getScaledSet, MERGE_SETS } from './sets.js';
 
+/**
+ *
+ * @param {keyof MERGE_SETS} setKey
+ * @returns {number}
+ */
 function readHighScore(setKey) {
   return Number(localStorage.getItem(`high_score_${setKey}`) || 0);
 }
 
+/**
+ *
+ * @param {keyof MERGE_SETS} setKey
+ * @returns {string}
+ */
+function getSaveKey(setKey) {
+  return `sausage_game_save_${setKey}`;
+}
+
+/**
+ *
+ * @param {keyof MERGE_SETS} initialSetKey
+ */
 export function createGameModel(initialSetKey = window.INITIAL_SET_KEY || 'sausages') {
   const model = {
     currentSetKey: initialSetKey,
@@ -21,6 +39,10 @@ export function createGameModel(initialSetKey = window.INITIAL_SET_KEY || 'sausa
     isTimerRunning: false,
     timerInterval: null,
 
+    /**
+     *
+     * @param {keyof MERGE_SETS} setKey
+     */
     loadSet(setKey) {
       this.currentSetKey = setKey;
       this.itemTypes = getScaledSet(setKey);
@@ -39,6 +61,10 @@ export function createGameModel(initialSetKey = window.INITIAL_SET_KEY || 'sausa
       this.stopTimer();
     },
 
+    /**
+     *
+     * @param {number} points
+     */
     addScore(points) {
       this.score += points;
       if (this.score > this.highScore) {
@@ -66,6 +92,31 @@ export function createGameModel(initialSetKey = window.INITIAL_SET_KEY || 'sausa
     stopTimer() {
       this.pauseTimer();
       this.elapsedTime = 0;
+    },
+
+    getSavedGame() {
+      try {
+        const savedGame = JSON.parse(localStorage.getItem(getSaveKey(this.currentSetKey)) || 'null');
+        return [1, 2].includes(savedGame?.version) && savedGame.setKey === this.currentSetKey ? savedGame : null;
+      } catch (error) {
+        localStorage.removeItem(getSaveKey(this.currentSetKey));
+        return null;
+      }
+    },
+
+    saveGame(snapshot) {
+      try {
+        localStorage.setItem(
+          getSaveKey(this.currentSetKey),
+          JSON.stringify({ version: 2, setKey: this.currentSetKey, ...snapshot }),
+        );
+      } catch (error) {
+        console.warn('Impossible de sauvegarder la partie.', error);
+      }
+    },
+
+    clearSavedGame() {
+      localStorage.removeItem(getSaveKey(this.currentSetKey));
     },
 
     setGameOver() {

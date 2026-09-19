@@ -18,6 +18,7 @@ import {
   getNextPreviewPos,
   getWheelCenter,
   renderGameOver,
+  renderContinuePrompt,
   uiElements,
   updateTimerDisplay,
 } from './ui.js';
@@ -36,6 +37,9 @@ class MergeGameScene extends Phaser.Scene {
       nextItemPreview: null,
       wheelSprites: [],
     };
+    this.isStartChoicePending = false;
+    this.ignoreNextPointerUp = false;
+    this.saveInterval = null;
   }
 
   get state() {
@@ -64,6 +68,8 @@ class MergeGameScene extends Phaser.Scene {
   create() {
     const state = this.state;
     const runtime = this.runtime;
+    const savedGame = this.model.getSavedGame();
+    this.isStartChoicePending = Boolean(savedGame);
     this.model.reset();
 
     this.matter.world.setBounds(boardX, boardY, BOARD_WIDTH, BOARD_HEIGHT, 32 * SCALE, true, true, false, true);
@@ -111,8 +117,30 @@ class MergeGameScene extends Phaser.Scene {
     applyTheme(this, this.model);
     this.loadLeaderboard();
 
-    this.state.nextTypeIndex = this.getRandomNextIndex();
-    this.spawnNextItem();
+    const startGame = (gameToRestore, ignorePointerUp = false) => {
+      if (gameToRestore) {
+        this.restoreGame(gameToRestore);
+      } else {
+        this.model.clearSavedGame();
+        this.state.nextTypeIndex = this.getRandomNextIndex();
+        this.spawnNextItem();
+      }
+
+      this.ignoreNextPointerUp = ignorePointerUp;
+      this.isStartChoicePending = false;
+      this.saveInterval = window.setInterval(() => this.saveGame(), 500);
+    };
+
+    if (savedGame) {
+      renderContinuePrompt(this, {
+        onContinue: () => startGame(savedGame, true),
+        onNewGame: () => startGame(null, true),
+      });
+    } else {
+      startGame(null);
+    }
+
+    window.addEventListener('pagehide', () => this.saveGame());
 
     // --- Gestion des entrées / interactions ---
     const isPointerInBoard = (worldPoint) => {
@@ -143,6 +171,10 @@ class MergeGameScene extends Phaser.Scene {
     });
 
     this.input.on('pointerup', (pointer) => {
+      if (this.isStartChoicePending || this.ignoreNextPointerUp) {
+        this.ignoreNextPointerUp = false;
+        return;
+      }
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
       if (!isPointerInBoard(worldPoint)) return;
@@ -166,11 +198,13 @@ class MergeGameScene extends Phaser.Scene {
       runtime.aimLine.clear();
 
       this.createPhysicsItem(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
+      this.saveGame();
 
       this.time.delayedCall(450, () => {
         if (!state.gameOver) {
           this.spawnNextItem();
           state.canDrop = true;
+          this.saveGame();
         }
       });
     });
@@ -397,6 +431,12 @@ class MergeGameScene extends Phaser.Scene {
     state.currentTypeIndex = state.nextTypeIndex;
     state.nextTypeIndex = this.getRandomNextIndex();
 
+    this.spawnCurrentItem();
+  }
+
+  spawnCurrentItem() {
+    const state = this.state;
+    const runtime = this.runtime;
     const typeInfo = state.ITEM_TYPES[state.currentTypeIndex];
     if (uiElements.sausNameText) uiElements.sausNameText.setText(typeInfo.name);
 
@@ -424,6 +464,60 @@ class MergeGameScene extends Phaser.Scene {
 
     runtime.currentItemSprite.x = initialX;
     runtime.currentItemSprite.y = boardY + 60 * SCALE;
+  }
+
+  saveGame() {
+    if (this.state.gameOver || !this.state.ITEM_TYPES.length || this.isStartChoicePending) return;
+
+    const bodies = this.matter.world
+      .getAllBodies()
+      .filter((body) => body?.itemTypeIndex !== undefined)
+      .map((body) => ({
+        typeIndex: body.itemTypeIndex,
+        x: body.position.x,
+        y: body.position.y,
+        angle: body.angle,
+        velocityX: body.velocity.x,
+        velocityY: body.velocity.y,
+        angularVelocity: body.angularVelocity,
+      }));
+
+    this.model.saveGame({
+      score: this.state.score,
+      elapsedTime: this.state.elapsedTime,
+      currentTypeIndex: this.state.currentTypeIndex,
+      nextTypeIndex: this.state.nextTypeIndex,
+      currentItemX: this.runtime.currentItemSprite?.x,
+      boardY,
+      bodies,
+    });
+  }
+
+  restoreGame(savedGame) {
+    const savedBoardY = Number.isFinite(savedGame.boardY) ? savedGame.boardY : 0;
+    const boardOffset = boardY - savedBoardY;
+    this.state.score = savedGame.score || 0;
+    this.state.elapsedTime = savedGame.elapsedTime || 0;
+    this.state.currentTypeIndex = savedGame.currentTypeIndex;
+    this.state.nextTypeIndex = savedGame.nextTypeIndex;
+    this.state.canDrop = true;
+
+    savedGame.bodies?.forEach((savedBody) => {
+      const body = this.createPhysicsItem(savedBody.x, savedBody.y + boardOffset, savedBody.typeIndex);
+      this.matter.body.setAngle(body, savedBody.angle || 0);
+      this.matter.body.setVelocity(body, { x: savedBody.velocityX || 0, y: savedBody.velocityY || 0 });
+      this.matter.body.setAngularVelocity(body, savedBody.angularVelocity || 0);
+    });
+
+    this.spawnCurrentItem();
+    if (Number.isFinite(savedGame.currentItemX)) {
+      this.runtime.currentItemSprite.x = savedGame.currentItemX;
+    }
+    this.updateScoreDisplay();
+    updateTimerDisplay(this.state);
+    if (this.state.elapsedTime > 0) {
+      this.state.startTimer((seconds) => updateTimerDisplay(this.state, seconds));
+    }
   }
 
   createPreviewSprite(typeInfo) {
@@ -506,6 +600,8 @@ class MergeGameScene extends Phaser.Scene {
   }
 
   triggerGameOver() {
+    this.model.clearSavedGame();
+    if (this.saveInterval) window.clearInterval(this.saveInterval);
     this.runtime.aimLine.clear();
     this.model.setGameOver();
     renderGameOver(this, this.model, {

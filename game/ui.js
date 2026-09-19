@@ -342,6 +342,78 @@ export function updateTimerDisplay(model, seconds = model.elapsedTime) {
 /**
  *
  * @param {Phaser.Scene} scene
+ * @param {onContinue: function, onNewGame: function} param1
+ */
+export function renderContinuePrompt(scene, { onContinue, onNewGame }) {
+  const overlay = scene.add.graphics().setDepth(2000);
+  overlay.fillStyle(0x000000, 0.72).fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  const centerX = CANVAS_WIDTH / 2;
+  const centerY = isMobilePortrait ? boardY + BOARD_HEIGHT / 2 : CANVAS_HEIGHT / 2;
+  const title = scene.add
+    .text(centerX, centerY - 75 * SCALE, 'PARTIE EN COURS', {
+      fontSize: `${22 * SCALE}px`,
+      fontStyle: 'bold',
+      fill: '#ffffff',
+    })
+    .setOrigin(0.5)
+    .setDepth(2001);
+
+  const subtitle = scene.add
+    .text(centerX, centerY - 35 * SCALE, 'Voulez-vous continuer ?', {
+      fontSize: `${13 * SCALE}px`,
+      fill: '#cccccc',
+    })
+    .setOrigin(0.5)
+    .setDepth(2001);
+
+  const createChoice = (label, x, callback, color) =>
+    scene.add
+      .text(x, centerY + 35 * SCALE, label, {
+        fontSize: `${14 * SCALE}px`,
+        fontStyle: 'bold',
+        fill: '#181412',
+        backgroundColor: color,
+        padding: { x: 14 * SCALE, y: 8 * SCALE },
+      })
+      .setOrigin(0.5)
+      .setDepth(2001)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', callback);
+
+  let continueButton;
+  let newGameButton;
+  const cleanup = () => {
+    overlay.destroy();
+    title.destroy();
+    subtitle.destroy();
+    continueButton.destroy();
+    newGameButton.destroy();
+  };
+
+  continueButton = createChoice(
+    'CONTINUER',
+    centerX - 80 * SCALE,
+    () => {
+      cleanup();
+      onContinue();
+    },
+    '#ffca28',
+  );
+  newGameButton = createChoice(
+    'NOUVELLE PARTIE',
+    centerX + 60 * SCALE,
+    () => {
+      cleanup();
+      onNewGame();
+    },
+    '#ffffff',
+  );
+}
+
+/**
+ *
+ * @param {Phaser.Scene} scene
  * @param {*} model
  * @param {*} param2
  */
