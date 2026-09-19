@@ -32,8 +32,8 @@ class MergeGameScene extends Phaser.Scene {
       bgMusic: null,
       gameOverLine: null,
       aimLine: null,
-      currentSausageSprite: null,
-      nextSausagePreview: null,
+      currentItemSprite: null,
+      nextItemPreview: null,
       wheelSprites: [],
     };
   }
@@ -112,7 +112,7 @@ class MergeGameScene extends Phaser.Scene {
     this.loadLeaderboard();
 
     this.state.nextTypeIndex = this.getRandomNextIndex();
-    this.spawnNextSausage();
+    this.spawnNextItem();
 
     // --- Gestion des entrées / interactions ---
     const isPointerInBoard = (worldPoint) => {
@@ -125,12 +125,12 @@ class MergeGameScene extends Phaser.Scene {
     };
 
     const updatePosition = (pointer) => {
-      if (state.canDrop && runtime.currentSausageSprite && !state.gameOver) {
+      if (state.canDrop && runtime.currentItemSprite && !state.gameOver) {
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-        const currentRadius = state.SAUSAGE_TYPES[state.currentTypeIndex].radius;
+        const currentRadius = state.ITEM_TYPES[state.currentTypeIndex].radius;
         const minX = boardX + currentRadius + 5 * SCALE;
         const maxX = boardX + BOARD_WIDTH - currentRadius - 5 * SCALE;
-        runtime.currentSausageSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
+        runtime.currentItemSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
       }
     };
 
@@ -160,16 +160,16 @@ class MergeGameScene extends Phaser.Scene {
       }
 
       state.canDrop = false;
-      const dropX = runtime.currentSausageSprite.x;
+      const dropX = runtime.currentItemSprite.x;
 
-      runtime.currentSausageSprite.destroy();
+      runtime.currentItemSprite.destroy();
       runtime.aimLine.clear();
 
-      this.createPhysicsSausage(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
+      this.createPhysicsItem(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
 
       this.time.delayedCall(450, () => {
         if (!state.gameOver) {
-          this.spawnNextSausage();
+          this.spawnNextItem();
           state.canDrop = true;
         }
       });
@@ -190,9 +190,9 @@ class MergeGameScene extends Phaser.Scene {
         const bodyA = pair.bodyA.parent || pair.bodyA;
         const bodyB = pair.bodyB.parent || pair.bodyB;
 
-        if (bodyA.sausageTypeIndex !== undefined && bodyB.sausageTypeIndex !== undefined) {
-          if (bodyA.sausageTypeIndex === bodyB.sausageTypeIndex) {
-            const currentIndex = bodyA.sausageTypeIndex;
+        if (bodyA.itemTypeIndex !== undefined && bodyB.itemTypeIndex !== undefined) {
+          if (bodyA.itemTypeIndex === bodyB.itemTypeIndex) {
+            const currentIndex = bodyA.itemTypeIndex;
 
             if (bodyA.isMarkedForDelete || bodyB.isMarkedForDelete) return;
             bodyA.isMarkedForDelete = true;
@@ -200,26 +200,26 @@ class MergeGameScene extends Phaser.Scene {
 
             this.playPopSound(currentIndex);
 
-            if (currentIndex < state.SAUSAGE_TYPES.length - 1) {
+            if (currentIndex < state.ITEM_TYPES.length - 1) {
               const newX = (bodyA.position.x + bodyB.position.x) / 2;
               const newY = (bodyA.position.y + bodyB.position.y) / 2;
               const nextIndex = currentIndex + 1;
 
-              this.model.addScore(state.SAUSAGE_TYPES[nextIndex].score);
+              this.model.addScore(state.ITEM_TYPES[nextIndex].score);
               this.updateScoreDisplay();
 
-              this.destroySausageBody(bodyA);
-              this.destroySausageBody(bodyB);
+              this.destroyItemBody(bodyA);
+              this.destroyItemBody(bodyB);
 
               this.time.delayedCall(20, () => {
-                this.createPhysicsSausage(newX, newY, nextIndex);
+                this.createPhysicsItem(newX, newY, nextIndex);
               });
             } else {
-              this.model.addScore(state.SAUSAGE_TYPES[currentIndex].score * 2);
+              this.model.addScore(state.ITEM_TYPES[currentIndex].score * 2);
               this.updateScoreDisplay();
 
-              this.destroySausageBody(bodyA);
-              this.destroySausageBody(bodyB);
+              this.destroyItemBody(bodyA);
+              this.destroyItemBody(bodyB);
             }
           }
         }
@@ -251,18 +251,21 @@ class MergeGameScene extends Phaser.Scene {
     const state = this.state;
     const runtime = this.runtime;
     const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
-    const total = state.SAUSAGE_TYPES.length;
+    const total = state.ITEM_TYPES.length;
 
     runtime.wheelSprites.forEach((s) => s.destroy());
     runtime.wheelSprites = [];
 
-    state.SAUSAGE_TYPES.forEach((type, index) => {
+    state.ITEM_TYPES.forEach((type, index) => {
       const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
       const x = centerX + Math.cos(angle) * wheelRadius;
       const y = centerY + Math.sin(angle) * wheelRadius;
 
       const img = this.add.image(x, y, type.key);
-      const iconSize = 12 * SCALE;
+      const firstIconSize = 8 * SCALE;
+      const lastIconSize = 20 * SCALE;
+      const progress = total > 1 ? index / (total - 1) : 0;
+      const iconSize = Phaser.Math.Linear(firstIconSize, lastIconSize, progress);
       const maxDim = Math.max(img.width, img.height);
       img.setScale(iconSize / maxDim);
 
@@ -337,13 +340,13 @@ class MergeGameScene extends Phaser.Scene {
     if (state.gameOver) return;
 
     // Ligne de visée
-    if (state.canDrop && runtime.currentSausageSprite) {
+    if (state.canDrop && runtime.currentItemSprite) {
       runtime.aimLine.clear();
       const lineColor = state.isDarkMode ? 0xffffff : 0x000000;
       runtime.aimLine.lineStyle(1 * SCALE, lineColor, 0.3);
-      const startY = boardY + 60 * SCALE + state.SAUSAGE_TYPES[state.currentTypeIndex].radius;
+      const startY = boardY + 60 * SCALE + state.ITEM_TYPES[state.currentTypeIndex].radius;
       for (let y = startY; y < boardY + BOARD_HEIGHT; y += 12 * SCALE) {
-        runtime.aimLine.lineBetween(runtime.currentSausageSprite.x, y, runtime.currentSausageSprite.x, y + 6 * SCALE);
+        runtime.aimLine.lineBetween(runtime.currentItemSprite.x, y, runtime.currentItemSprite.x, y + 6 * SCALE);
       }
     }
 
@@ -351,7 +354,7 @@ class MergeGameScene extends Phaser.Scene {
     let isOverflowing = false;
 
     bodies.forEach((body) => {
-      if (body && body.sausageTypeIndex !== undefined && state.SAUSAGE_TYPES[body.sausageTypeIndex]) {
+      if (body && body.itemTypeIndex !== undefined && state.ITEM_TYPES[body.itemTypeIndex]) {
         if (body.gameObject) {
           body.gameObject.x = body.position.x;
           body.gameObject.y = body.position.y;
@@ -360,11 +363,13 @@ class MergeGameScene extends Phaser.Scene {
 
         // Détection du dépassement au-dessus de la ligne
         if (body.speed < 0.3 * SCALE) {
-          const itemRadius = state.SAUSAGE_TYPES[body.sausageTypeIndex].radius;
-          const topY = body.position.y - itemRadius;
+          const topY = body.bounds.min.y;
 
           if (topY < GAME_OVER_LINE_Y) {
             isOverflowing = true;
+            // Debug visuel pour le dépassement
+            // this.add.pointlight(body.position.x, topY, 0xff0000, 10 * SCALE, 0.5);
+            // console.log('overflowcheck', body.speed, topY, GAME_OVER_LINE_Y, isOverflowing, state.overflowTimer);
           }
         }
       }
@@ -386,25 +391,25 @@ class MergeGameScene extends Phaser.Scene {
     // return Math.floor(Math.random() * 8) + 3; // Pour tester les fusions rapides, on peut limiter aux types 3 à 10
   }
 
-  spawnNextSausage() {
+  spawnNextItem() {
     const state = this.state;
     const runtime = this.runtime;
     state.currentTypeIndex = state.nextTypeIndex;
     state.nextTypeIndex = this.getRandomNextIndex();
 
-    const typeInfo = state.SAUSAGE_TYPES[state.currentTypeIndex];
+    const typeInfo = state.ITEM_TYPES[state.currentTypeIndex];
     if (uiElements.sausNameText) uiElements.sausNameText.setText(typeInfo.name);
 
-    if (runtime.nextSausagePreview) runtime.nextSausagePreview.destroy();
-    const nextInfo = state.SAUSAGE_TYPES[state.nextTypeIndex];
+    if (runtime.nextItemPreview) runtime.nextItemPreview.destroy();
+    const nextInfo = state.ITEM_TYPES[state.nextTypeIndex];
     const previewPos = getNextPreviewPos();
-    runtime.nextSausagePreview = this.add.image(previewPos.x, previewPos.y, nextInfo.key);
+    runtime.nextItemPreview = this.add.image(previewPos.x, previewPos.y, nextInfo.key);
 
     const maxPreviewSize = 50 * SCALE;
-    const maxDimension = Math.max(runtime.nextSausagePreview.width, runtime.nextSausagePreview.height);
-    runtime.nextSausagePreview.setScale(maxPreviewSize / maxDimension);
+    const maxDimension = Math.max(runtime.nextItemPreview.width, runtime.nextItemPreview.height);
+    runtime.nextItemPreview.setScale(maxPreviewSize / maxDimension);
 
-    runtime.currentSausageSprite = this.createPreviewSprite(typeInfo);
+    runtime.currentItemSprite = this.createPreviewSprite(typeInfo);
 
     const activePointer = this.input.activePointer;
     const worldPoint = this.cameras.main.getWorldPoint(activePointer.x, activePointer.y);
@@ -417,8 +422,8 @@ class MergeGameScene extends Phaser.Scene {
         ? Phaser.Math.Clamp(worldPoint.x, minX, maxX)
         : boardX + BOARD_WIDTH / 2;
 
-    runtime.currentSausageSprite.x = initialX;
-    runtime.currentSausageSprite.y = boardY + 60 * SCALE;
+    runtime.currentItemSprite.x = initialX;
+    runtime.currentItemSprite.y = boardY + 60 * SCALE;
   }
 
   createPreviewSprite(typeInfo) {
@@ -429,9 +434,9 @@ class MergeGameScene extends Phaser.Scene {
     return sprite;
   }
 
-  createPhysicsSausage(x, y, typeIndex) {
+  createPhysicsItem(x, y, typeIndex) {
     const state = this.state;
-    const typeInfo = state.SAUSAGE_TYPES[typeIndex];
+    const typeInfo = state.ITEM_TYPES[typeIndex];
     const targetSize = typeInfo.radius * 2;
 
     const shapes = this.cache.json.get('physics_shapes');
@@ -482,17 +487,17 @@ class MergeGameScene extends Phaser.Scene {
       sprite.setDisplaySize(boxWidth, boxHeight);
       body.gameObject = sprite;
 
-      body.sausageTypeIndex = typeIndex;
+      body.itemTypeIndex = typeIndex;
       return body;
     }
 
-    sprite.body.sausageTypeIndex = typeIndex;
+    sprite.body.itemTypeIndex = typeIndex;
     sprite.body.gameObject = sprite;
 
     return sprite.body;
   }
 
-  destroySausageBody(body) {
+  destroyItemBody(body) {
     const gameObject = body.gameObject || (body.parent ? body.parent.gameObject : null);
     if (gameObject) {
       gameObject.destroy();

@@ -27,7 +27,7 @@ export function createGameModel(initialSetKey = window.INITIAL_SET_KEY || 'sausa
       this.highScore = readHighScore(setKey);
     },
 
-    get SAUSAGE_TYPES() {
+    get ITEM_TYPES() {
       return this.itemTypes;
     },
 

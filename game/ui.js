@@ -49,13 +49,13 @@ export function getWheelCenter() {
     return {
       x: BOARD_WIDTH / 2 + 75 * SCALE,
       y: boardY + BOARD_HEIGHT + 70 * SCALE,
-      radius: 35 * SCALE,
+      radius: 40 * SCALE,
     };
   }
   return {
     x: BOARD_WIDTH + 70 * SCALE,
     y: 490 * SCALE,
-    radius: 42 * SCALE,
+    radius: 52 * SCALE,
   };
 }
 
@@ -347,13 +347,14 @@ export function updateTimerDisplay(model, seconds = model.elapsedTime) {
  */
 export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
   const overlay = scene.add.graphics();
-  overlay.fillStyle(0x000000, 0.88);
+  overlay.fillStyle(0x000000, 0.5);
   overlay.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   overlay.setDepth(1000);
 
   const centerX = CANVAS_WIDTH / 2;
+  const gameOverOffsetY = isMobilePortrait ? boardY + 200 : 0;
   scene.add
-    .text(centerX, 50 * SCALE, 'GAME OVER', {
+    .text(centerX, gameOverOffsetY + 50 * SCALE, 'GAME OVER', {
       fontSize: `${28 * SCALE}px`,
       fill: '#ff4444',
       fontStyle: 'bold',
@@ -362,7 +363,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
     .setOrigin(0.5);
 
   scene.add
-    .text(centerX, 90 * SCALE, `Score: ${model.score}`, {
+    .text(centerX, gameOverOffsetY + 90 * SCALE, `Score: ${model.score}`, {
       fontSize: `${20 * SCALE}px`,
       fill: '#ffffff',
       fontStyle: 'bold',
@@ -372,11 +373,11 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
 
   let playerPseudo = (localStorage.getItem('sausage_player_name') || 'JOUEUR').substring(0, 10).toUpperCase();
   const statusText = scene.add
-    .text(centerX, 185 * SCALE, '', { fontSize: `${11 * SCALE}px`, fill: '#aaa' })
+    .text(centerX, gameOverOffsetY + 185 * SCALE, '', { fontSize: `${11 * SCALE}px`, fill: '#aaa' })
     .setDepth(1001)
     .setOrigin(0.5);
   const pseudoDisplay = scene.add
-    .text(centerX, 155 * SCALE, `${playerPseudo}_`, {
+    .text(centerX, gameOverOffsetY + 155 * SCALE, `${playerPseudo}_`, {
       fontSize: `${20 * SCALE}px`,
       fill: '#ffca28',
       fontStyle: 'bold',
@@ -387,7 +388,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
     .setOrigin(0.5);
 
   scene.add
-    .text(centerX, 130 * SCALE, 'VOTRE PSEUDO:', {
+    .text(centerX, gameOverOffsetY + 130 * SCALE, 'VOTRE PSEUDO:', {
       fontSize: `${11 * SCALE}px`,
       fill: '#888888',
     })
@@ -413,7 +414,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
     const startX = centerX - rowWidth / 2;
     row.forEach((char, colIndex) => {
       const x = startX + colIndex * (keyWidth + gap) + keyWidth / 2;
-      const y = 220 * SCALE + rowIndex * (keyHeight + gap) + keyHeight / 2;
+      const y = gameOverOffsetY + 220 * SCALE + rowIndex * (keyHeight + gap) + keyHeight / 2;
       const keyButton = scene.add
         .text(x, y, char, {
           fontSize: `${13 * SCALE}px`,
@@ -440,7 +441,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
   });
 
   const sendButton = scene.add
-    .text(centerX, 380 * SCALE, ' ENVOYER MON SCORE ', {
+    .text(centerX, gameOverOffsetY + 380 * SCALE, ' ENVOYER MON SCORE ', {
       fontSize: `${15 * SCALE}px`,
       fontStyle: 'bold',
       fill: '#181412',
@@ -475,7 +476,7 @@ export function renderGameOver(scene, model, { onSubmitScore, onRestart }) {
   });
 
   scene.add
-    .text(centerX, 435 * SCALE, ' 🔄 REJOUER ', {
+    .text(centerX, gameOverOffsetY + 435 * SCALE, ' 🔄 REJOUER ', {
       fontSize: `${15 * SCALE}px`,
       fill: '#ffffff',
       backgroundColor: '#444444',
