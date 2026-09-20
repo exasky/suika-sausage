@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { supabaseClient } from '../shared/supabaseClient.js';
 import { getLeaderboardTable } from './sets.js';
 

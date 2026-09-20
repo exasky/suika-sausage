@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 export const SCALE = 2;
 
 // --- CALCUL RESPONSIVE ---

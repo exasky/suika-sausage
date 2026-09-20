@@ -1,6 +1,24 @@
+// @ts-nocheck
+
 import { SCALE } from './config.js';
 
-export const MERGE_SETS = {
+export type ItemDefinition = {
+  key: string;
+  name: string;
+  radius: number;
+  score: number;
+};
+
+export type SetDefinition = {
+  label: string;
+  leaderboardTable: string;
+  bgmUrl: string;
+  bgImage: string;
+  popSoundUrl?: string;
+  items: ItemDefinition[];
+};
+
+export const MERGE_SETS: Record<string, SetDefinition> = {
   sausages: {
     label: 'Saucisses', // Nom affiché dans les onglets UI
     leaderboardTable: 'leaderboard_sausages', // Nom de ta table Supabase
@@ -82,13 +100,15 @@ export const MERGE_SETS = {
   },
 };
 
-export function getScaledSet(setKey) {
+export type SetKey = keyof typeof MERGE_SETS;
+
+export function getScaledSet(setKey: SetKey): ItemDefinition[] {
   return MERGE_SETS[setKey].items.map((type) => ({
     ...type,
     radius: type.radius * SCALE,
   }));
 }
 
-export function getLeaderboardTable(setKey) {
+export function getLeaderboardTable(setKey: SetKey): string {
   return MERGE_SETS[setKey].leaderboardTable;
 }

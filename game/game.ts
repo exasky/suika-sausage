@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -8,24 +10,25 @@ import {
   boardX,
   boardY,
 } from './config.js';
-import { MERGE_SETS } from './sets.js';
-import { createGameModel } from './model.js';
 import { getTopScores, submitScore } from './leaderboardRepository.js';
-import {
-  applyTheme,
-  createUI,
-  renderLeaderboard,
-  getNextPreviewPos,
-  getWheelCenter,
-  renderGameOver,
-  renderContinuePrompt,
-  uiElements,
-  updateTimerDisplay,
-} from './ui.js';
+import { createGameModel } from './model.js';
+import { MERGE_SETS } from './sets.js';
+import { UiManager } from './ui.js';
 
-import * as Phaser from 'https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.esm.min.js';
+import { AUTO, Game, GameObjects, Math as P_Math, Scale, Scene, Sound } from 'phaser';
 
-class MergeGameScene extends Phaser.Scene {
+class MergeGameScene extends Scene {
+  public model: ReturnType<typeof createGameModel>;
+  public ui: UiManager;
+  public runtime: {
+    bgMusic: Sound.BaseSound | null;
+    gameOverLine: GameObjects.Graphics | null;
+    aimLine: GameObjects.Graphics | null;
+    currentItemSprite: GameObjects.Image | null;
+    nextItemPreview: GameObjects.Image | null;
+    wheelSprites: GameObjects.Image[];
+  };
+
   constructor() {
     super({ key: 'MergeGameScene' });
     this.model = createGameModel();
@@ -83,7 +86,7 @@ class MergeGameScene extends Phaser.Scene {
     this.runtime.bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
 
     // Initialisation globale de l'interface
-    createUI(this, this.model);
+    this.ui = new UiManager(this, this.model);
 
     // Roue d'évolution
     this.createEvolutionWheel();
@@ -92,7 +95,7 @@ class MergeGameScene extends Phaser.Scene {
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         this.state.isDarkMode = e.matches;
-        applyTheme(this, this.model);
+        this.ui.applyTheme(this, this.model);
       });
     }
 
@@ -107,14 +110,14 @@ class MergeGameScene extends Phaser.Scene {
       .text(boardX + BOARD_WIDTH - 5 * SCALE, GAME_OVER_LINE_Y - 3 * SCALE, 'LIMIT', {
         fontSize: `${9 * SCALE}px`,
         fontStyle: 'bold',
-        fill: '#ff2244',
+        color: '#ff2244',
       })
       .setOrigin(1, 1)
       .setDepth(100);
 
     this.runtime.aimLine = this.add.graphics();
 
-    applyTheme(this, this.model);
+    this.ui.applyTheme(this, this.model);
     this.loadLeaderboard();
 
     const startGame = (gameToRestore, ignorePointerUp = false) => {
@@ -132,7 +135,7 @@ class MergeGameScene extends Phaser.Scene {
     };
 
     if (savedGame) {
-      renderContinuePrompt(this, {
+      this.ui.renderContinuePrompt(this, {
         onContinue: () => startGame(savedGame, true),
         onNewGame: () => startGame(null, true),
       });
@@ -143,6 +146,7 @@ class MergeGameScene extends Phaser.Scene {
     window.addEventListener('pagehide', () => this.saveGame());
 
     // --- Gestion des entrées / interactions ---
+    /** @param {Math.Vector2} worldPoint */
     const isPointerInBoard = (worldPoint) => {
       return (
         worldPoint.x >= boardX &&
@@ -152,69 +156,78 @@ class MergeGameScene extends Phaser.Scene {
       );
     };
 
+    /** @param {{x:number, y:number}} pointer */
     const updatePosition = (pointer) => {
       if (state.canDrop && runtime.currentItemSprite && !state.gameOver) {
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         const currentRadius = state.ITEM_TYPES[state.currentTypeIndex].radius;
         const minX = boardX + currentRadius + 5 * SCALE;
         const maxX = boardX + BOARD_WIDTH - currentRadius - 5 * SCALE;
-        runtime.currentItemSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
+        runtime.currentItemSprite.x = P_Math.Clamp(worldPoint.x, minX, maxX);
       }
     };
 
     this.input.on('pointermove', updatePosition);
 
-    this.input.on('pointerdown', (pointer) => {
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      if (!isPointerInBoard(worldPoint)) return;
-      updatePosition(pointer);
-    });
+    this.input.on(
+      'pointerdown',
+      /** @param {{x:number, y:number}} pointer */
+      (pointer) => {
+        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        if (!isPointerInBoard(worldPoint)) return;
+        updatePosition(pointer);
+      },
+    );
 
-    this.input.on('pointerup', (pointer) => {
-      if (this.isStartChoicePending || this.ignoreNextPointerUp) {
-        this.ignoreNextPointerUp = false;
-        return;
-      }
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-
-      if (!isPointerInBoard(worldPoint)) return;
-      if (!state.canDrop || state.gameOver) return;
-
-      if (this.sound.context && this.sound.context.state === 'suspended') {
-        this.sound.context.resume();
-      }
-      if (!runtime.bgMusic.isPlaying && !state.isMuted) {
-        this.sound.unlock();
-        runtime.bgMusic.play();
-      }
-      if (!state.isTimerRunning) {
-        this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds));
-      }
-
-      state.canDrop = false;
-      const dropX = runtime.currentItemSprite.x;
-
-      runtime.currentItemSprite.destroy();
-      runtime.aimLine.clear();
-
-      this.createPhysicsItem(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
-      this.saveGame();
-
-      this.time.delayedCall(450, () => {
-        if (!state.gameOver) {
-          this.spawnNextItem();
-          state.canDrop = true;
-          this.saveGame();
+    this.input.on(
+      'pointerup',
+      /** @param {{x:number, y:number}} pointer */
+      (pointer) => {
+        if (this.isStartChoicePending || this.ignoreNextPointerUp) {
+          this.ignoreNextPointerUp = false;
+          return;
         }
-      });
-    });
+        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+
+        if (!isPointerInBoard(worldPoint)) return;
+        if (!state.canDrop || state.gameOver) return;
+
+        if (this.sound.context && this.sound.context.state === 'suspended') {
+          this.sound.context.resume();
+        }
+        if (!runtime.bgMusic.isPlaying && !state.isMuted) {
+          this.sound.unlock();
+          runtime.bgMusic.play();
+        }
+        if (!state.isTimerRunning) {
+          this.model.startTimer((seconds) => this.ui.updateTimerDisplay(this.model, seconds));
+        }
+
+        state.canDrop = false;
+        const dropX = runtime.currentItemSprite.x;
+
+        runtime.currentItemSprite.destroy();
+        runtime.aimLine.clear();
+
+        this.createPhysicsItem(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
+        this.saveGame();
+
+        this.time.delayedCall(450, () => {
+          if (!state.gameOver) {
+            this.spawnNextItem();
+            state.canDrop = true;
+            this.saveGame();
+          }
+        });
+      },
+    );
 
     window.addEventListener('blur', () => {
       this.model.pauseTimer();
     });
     window.addEventListener('focus', () => {
       if (!state.gameOver) {
-        this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds));
+        this.model.startTimer((seconds) => this.ui.updateTimerDisplay(this.model, seconds));
       }
     });
 
@@ -284,7 +297,7 @@ class MergeGameScene extends Phaser.Scene {
   createEvolutionWheel() {
     const state = this.state;
     const runtime = this.runtime;
-    const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
+    const { x: centerX, y: centerY, radius: wheelRadius } = this.ui.getWheelCenter();
     const total = state.ITEM_TYPES.length;
 
     runtime.wheelSprites.forEach((s) => s.destroy());
@@ -299,7 +312,7 @@ class MergeGameScene extends Phaser.Scene {
       const firstIconSize = 8 * SCALE;
       const lastIconSize = 20 * SCALE;
       const progress = total > 1 ? index / (total - 1) : 0;
-      const iconSize = Phaser.Math.Linear(firstIconSize, lastIconSize, progress);
+      const iconSize = P_Math.Linear(firstIconSize, lastIconSize, progress);
       const maxDim = Math.max(img.width, img.height);
       img.setScale(iconSize / maxDim);
 
@@ -351,18 +364,18 @@ class MergeGameScene extends Phaser.Scene {
 
       osc.start(audioCtx.currentTime);
       osc.stop(audioCtx.currentTime + duration);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   updateScoreDisplay() {
     const state = this.state;
-    if (uiElements.scoreText) uiElements.scoreText.setText(state.score);
-    if (uiElements.highScoreText) uiElements.highScoreText.setText(state.highScore);
+    this.ui.elements.scoreText.setText(state.score);
+    this.ui.elements.highScoreText.setText(state.highScore);
   }
 
   async loadLeaderboard() {
     try {
-      renderLeaderboard(await getTopScores(this.model.currentSetKey));
+      this.ui.renderLeaderboard(await getTopScores(this.model.currentSetKey));
     } catch (error) {
       console.error('Erreur Supabase (Leaderboard) :', error.message || error);
     }
@@ -438,11 +451,11 @@ class MergeGameScene extends Phaser.Scene {
     const state = this.state;
     const runtime = this.runtime;
     const typeInfo = state.ITEM_TYPES[state.currentTypeIndex];
-    if (uiElements.sausNameText) uiElements.sausNameText.setText(typeInfo.name);
+    this.ui.elements.sausNameText.setText(typeInfo.name);
 
     if (runtime.nextItemPreview) runtime.nextItemPreview.destroy();
     const nextInfo = state.ITEM_TYPES[state.nextTypeIndex];
-    const previewPos = getNextPreviewPos();
+    const previewPos = this.ui.getNextPreviewPos();
     runtime.nextItemPreview = this.add.image(previewPos.x, previewPos.y, nextInfo.key);
 
     const maxPreviewSize = 50 * SCALE;
@@ -459,7 +472,7 @@ class MergeGameScene extends Phaser.Scene {
 
     const initialX =
       activePointer && activePointer.x > 0 && worldPoint.x >= boardX && worldPoint.x <= boardX + BOARD_WIDTH
-        ? Phaser.Math.Clamp(worldPoint.x, minX, maxX)
+        ? P_Math.Clamp(worldPoint.x, minX, maxX)
         : boardX + BOARD_WIDTH / 2;
 
     runtime.currentItemSprite.x = initialX;
@@ -514,9 +527,9 @@ class MergeGameScene extends Phaser.Scene {
       this.runtime.currentItemSprite.x = savedGame.currentItemX;
     }
     this.updateScoreDisplay();
-    updateTimerDisplay(this.state);
+    this.ui.updateTimerDisplay(this.state);
     if (this.state.elapsedTime > 0) {
-      this.state.startTimer((seconds) => updateTimerDisplay(this.state, seconds));
+      this.state.startTimer((seconds) => this.ui.updateTimerDisplay(this.state, seconds));
     }
   }
 
@@ -604,7 +617,7 @@ class MergeGameScene extends Phaser.Scene {
     if (this.saveInterval) window.clearInterval(this.saveInterval);
     this.runtime.aimLine.clear();
     this.model.setGameOver();
-    renderGameOver(this, this.model, {
+    this.ui.renderGameOver(this, this.model, {
       onSubmitScore: async (playerName, score) => {
         await submitScore(this.model.currentSetKey, playerName, score);
         await this.loadLeaderboard();
@@ -617,10 +630,10 @@ class MergeGameScene extends Phaser.Scene {
 }
 
 const config = {
-  type: Phaser.AUTO,
+  type: AUTO,
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Scale.FIT,
+    autoCenter: Scale.CENTER_BOTH,
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
   },
@@ -643,4 +656,4 @@ const config = {
   scene: MergeGameScene,
 };
 
-new Phaser.Game(config);
+new Game(config);
