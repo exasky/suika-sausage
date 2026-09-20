@@ -8,24 +8,43 @@ import {
   boardX,
   boardY,
 } from './config.js';
-import { MERGE_SETS } from './sets.js';
-import { createGameModel } from './model.js';
 import { getTopScores, submitScore } from './leaderboardRepository.js';
-import {
-  applyTheme,
-  createUI,
-  renderLeaderboard,
-  getNextPreviewPos,
-  getWheelCenter,
-  renderGameOver,
-  renderContinuePrompt,
-  uiElements,
-  updateTimerDisplay,
-} from './ui.js';
+import { createGameModel, GameSnapshot } from './model.js';
+import { ItemDefinition, MERGE_SETS } from './sets.js';
+import { UiManager } from './ui.js';
 
-import * as Phaser from 'https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.esm.min.js';
+import { AUTO, Game, GameObjects, Math as P_Math, Scale, Scene, Sound, Physics } from 'phaser';
 
-class MergeGameScene extends Phaser.Scene {
+type GameBody = MatterJS.BodyType & {
+  itemTypeIndex: number;
+  isMarkedForDelete?: boolean;
+  gameObject?: GameObjects.Image;
+};
+
+function asGameBody(body: MatterJS.BodyType): GameBody {
+  return body as GameBody;
+}
+
+function getAudioContext(sound: Phaser.Sound.BaseSoundManager): AudioContext | null {
+  return sound instanceof Sound.WebAudioSoundManager ? sound.context : null;
+}
+
+class MergeGameScene extends Scene {
+  public model: ReturnType<typeof createGameModel>;
+  public ui!: UiManager;
+  public runtime: {
+    bgMusic: Sound.BaseSound | null;
+    gameOverLine: GameObjects.Graphics | null;
+    aimLine: GameObjects.Graphics | null;
+    currentItemSprite: GameObjects.Image | null;
+    nextItemPreview: GameObjects.Image | null;
+    wheelSprites: GameObjects.Image[];
+  };
+
+  private isStartChoicePending: boolean;
+  private ignoreNextPointerUp: boolean;
+  private saveInterval: number | null;
+
   constructor() {
     super({ key: 'MergeGameScene' });
     this.model = createGameModel();
@@ -83,7 +102,7 @@ class MergeGameScene extends Phaser.Scene {
     this.runtime.bgMusic = this.sound.add('bgm', { volume: 0.25, loop: true });
 
     // Initialisation globale de l'interface
-    createUI(this, this.model);
+    this.ui = new UiManager(this, this.model);
 
     // Roue d'évolution
     this.createEvolutionWheel();
@@ -92,7 +111,7 @@ class MergeGameScene extends Phaser.Scene {
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         this.state.isDarkMode = e.matches;
-        applyTheme(this, this.model);
+        this.ui.applyTheme(this, this.model);
       });
     }
 
@@ -107,17 +126,17 @@ class MergeGameScene extends Phaser.Scene {
       .text(boardX + BOARD_WIDTH - 5 * SCALE, GAME_OVER_LINE_Y - 3 * SCALE, 'LIMIT', {
         fontSize: `${9 * SCALE}px`,
         fontStyle: 'bold',
-        fill: '#ff2244',
+        color: '#ff2244',
       })
       .setOrigin(1, 1)
       .setDepth(100);
 
     this.runtime.aimLine = this.add.graphics();
 
-    applyTheme(this, this.model);
+    this.ui.applyTheme(this, this.model);
     this.loadLeaderboard();
 
-    const startGame = (gameToRestore, ignorePointerUp = false) => {
+    const startGame = (gameToRestore: typeof savedGame, ignorePointerUp = false) => {
       if (gameToRestore) {
         this.restoreGame(gameToRestore);
       } else {
@@ -128,11 +147,11 @@ class MergeGameScene extends Phaser.Scene {
 
       this.ignoreNextPointerUp = ignorePointerUp;
       this.isStartChoicePending = false;
-      this.saveInterval = window.setInterval(() => this.saveGame(), 500);
+      this.saveInterval = setInterval(() => this.saveGame(), 500);
     };
 
     if (savedGame) {
-      renderContinuePrompt(this, {
+      this.ui.renderContinuePrompt(this, {
         onContinue: () => startGame(savedGame, true),
         onNewGame: () => startGame(null, true),
       });
@@ -143,7 +162,7 @@ class MergeGameScene extends Phaser.Scene {
     window.addEventListener('pagehide', () => this.saveGame());
 
     // --- Gestion des entrées / interactions ---
-    const isPointerInBoard = (worldPoint) => {
+    const isPointerInBoard = (worldPoint: P_Math.Vector2) => {
       return (
         worldPoint.x >= boardX &&
         worldPoint.x <= boardX + BOARD_WIDTH &&
@@ -152,77 +171,84 @@ class MergeGameScene extends Phaser.Scene {
       );
     };
 
-    const updatePosition = (pointer) => {
+    const updatePosition = (pointer: P_Math.Vector2) => {
       if (state.canDrop && runtime.currentItemSprite && !state.gameOver) {
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         const currentRadius = state.ITEM_TYPES[state.currentTypeIndex].radius;
         const minX = boardX + currentRadius + 5 * SCALE;
         const maxX = boardX + BOARD_WIDTH - currentRadius - 5 * SCALE;
-        runtime.currentItemSprite.x = Phaser.Math.Clamp(worldPoint.x, minX, maxX);
+        runtime.currentItemSprite.x = P_Math.Clamp(worldPoint.x, minX, maxX);
       }
     };
 
     this.input.on('pointermove', updatePosition);
 
-    this.input.on('pointerdown', (pointer) => {
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      if (!isPointerInBoard(worldPoint)) return;
-      updatePosition(pointer);
-    });
+    this.input.on(
+      'pointerdown',
+      (pointer: P_Math.Vector2) => {
+        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        if (!isPointerInBoard(worldPoint)) return;
+        updatePosition(pointer);
+      },
+    );
 
-    this.input.on('pointerup', (pointer) => {
-      if (this.isStartChoicePending || this.ignoreNextPointerUp) {
-        this.ignoreNextPointerUp = false;
-        return;
-      }
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-
-      if (!isPointerInBoard(worldPoint)) return;
-      if (!state.canDrop || state.gameOver) return;
-
-      if (this.sound.context && this.sound.context.state === 'suspended') {
-        this.sound.context.resume();
-      }
-      if (!runtime.bgMusic.isPlaying && !state.isMuted) {
-        this.sound.unlock();
-        runtime.bgMusic.play();
-      }
-      if (!state.isTimerRunning) {
-        this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds));
-      }
-
-      state.canDrop = false;
-      const dropX = runtime.currentItemSprite.x;
-
-      runtime.currentItemSprite.destroy();
-      runtime.aimLine.clear();
-
-      this.createPhysicsItem(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
-      this.saveGame();
-
-      this.time.delayedCall(450, () => {
-        if (!state.gameOver) {
-          this.spawnNextItem();
-          state.canDrop = true;
-          this.saveGame();
+    this.input.on(
+      'pointerup',
+      (pointer: P_Math.Vector2) => {
+        if (this.isStartChoicePending || this.ignoreNextPointerUp) {
+          this.ignoreNextPointerUp = false;
+          return;
         }
-      });
-    });
+        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+
+        if (!isPointerInBoard(worldPoint)) return;
+        if (!state.canDrop || state.gameOver) return;
+
+        const audioContext = getAudioContext(this.sound);
+        if (audioContext?.state === 'suspended') {
+          audioContext.resume();
+        }
+        if (!runtime.bgMusic!.isPlaying && !state.isMuted) {
+          this.sound.unlock();
+          runtime.bgMusic!.play();
+        }
+        if (!state.isTimerRunning) {
+          this.model.startTimer((seconds) => this.ui.updateTimerDisplay(this.model, seconds));
+        }
+
+        state.canDrop = false;
+        const dropX = runtime.currentItemSprite!.x;
+
+        runtime.currentItemSprite!.destroy();
+        runtime.aimLine!.clear();
+
+        this.createPhysicsItem(dropX, boardY + 60 * SCALE, state.currentTypeIndex);
+        this.saveGame();
+
+        this.time.delayedCall(450, () => {
+          if (!state.gameOver) {
+            this.spawnNextItem();
+            state.canDrop = true;
+            this.saveGame();
+          }
+        });
+      },
+    );
 
     window.addEventListener('blur', () => {
       this.model.pauseTimer();
     });
     window.addEventListener('focus', () => {
       if (!state.gameOver) {
-        this.model.startTimer((seconds) => updateTimerDisplay(this.model, seconds));
+        this.model.startTimer((seconds) => this.ui.updateTimerDisplay(this.model, seconds));
       }
     });
 
     // --- Gestion des collisions et fusions ---
-    this.matter.world.on('collisionstart', (event) => {
+    this.matter.world.on('collisionstart', (event: Physics.Matter.Events.CollisionStartEvent) => {
       event.pairs.forEach((pair) => {
-        const bodyA = pair.bodyA.parent || pair.bodyA;
-        const bodyB = pair.bodyB.parent || pair.bodyB;
+        const bodyA = asGameBody(pair.bodyA.parent || pair.bodyA);
+        const bodyB = asGameBody(pair.bodyB.parent || pair.bodyB);
 
         if (bodyA.itemTypeIndex !== undefined && bodyB.itemTypeIndex !== undefined) {
           if (bodyA.itemTypeIndex === bodyB.itemTypeIndex) {
@@ -263,16 +289,16 @@ class MergeGameScene extends Phaser.Scene {
 
   drawGameOverLine() {
     const runtime = this.runtime;
-    runtime.gameOverLine.clear();
-    runtime.gameOverLine.lineStyle(6 * SCALE, 0xff0000, 0.35);
-    runtime.gameOverLine.lineBetween(boardX, GAME_OVER_LINE_Y, boardX + BOARD_WIDTH, GAME_OVER_LINE_Y);
+    runtime.gameOverLine!.clear();
+    runtime.gameOverLine!.lineStyle(6 * SCALE, 0xff0000, 0.35);
+    runtime.gameOverLine!.lineBetween(boardX, GAME_OVER_LINE_Y, boardX + BOARD_WIDTH, GAME_OVER_LINE_Y);
 
-    runtime.gameOverLine.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
+    runtime.gameOverLine!.lineStyle(2.5 * SCALE, 0xff2244, 1.0);
     const dashWidth = 8 * SCALE;
     const gapWidth = 6 * SCALE;
 
     for (let x = boardX; x < boardX + BOARD_WIDTH; x += dashWidth + gapWidth) {
-      runtime.gameOverLine.lineBetween(
+      runtime.gameOverLine!.lineBetween(
         x,
         GAME_OVER_LINE_Y,
         Math.min(x + dashWidth, boardX + BOARD_WIDTH),
@@ -284,7 +310,7 @@ class MergeGameScene extends Phaser.Scene {
   createEvolutionWheel() {
     const state = this.state;
     const runtime = this.runtime;
-    const { x: centerX, y: centerY, radius: wheelRadius } = getWheelCenter();
+    const { x: centerX, y: centerY, radius: wheelRadius } = this.ui.getWheelCenter();
     const total = state.ITEM_TYPES.length;
 
     runtime.wheelSprites.forEach((s) => s.destroy());
@@ -299,7 +325,7 @@ class MergeGameScene extends Phaser.Scene {
       const firstIconSize = 8 * SCALE;
       const lastIconSize = 20 * SCALE;
       const progress = total > 1 ? index / (total - 1) : 0;
-      const iconSize = Phaser.Math.Linear(firstIconSize, lastIconSize, progress);
+      const iconSize = P_Math.Linear(firstIconSize, lastIconSize, progress);
       const maxDim = Math.max(img.width, img.height);
       img.setScale(iconSize / maxDim);
 
@@ -328,7 +354,7 @@ class MergeGameScene extends Phaser.Scene {
     }
 
     try {
-      const audioCtx = this.sound.context;
+      const audioCtx = getAudioContext(this.sound);
       if (!audioCtx) return;
 
       const pitchVariation = 1 + (Math.random() * 0.16 - 0.08);
@@ -351,40 +377,40 @@ class MergeGameScene extends Phaser.Scene {
 
       osc.start(audioCtx.currentTime);
       osc.stop(audioCtx.currentTime + duration);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   updateScoreDisplay() {
     const state = this.state;
-    if (uiElements.scoreText) uiElements.scoreText.setText(state.score);
-    if (uiElements.highScoreText) uiElements.highScoreText.setText(state.highScore);
+    this.ui.elements.scoreText.setText(`${state.score}`);
+    this.ui.elements.highScoreText.setText(`${state.highScore}`);
   }
 
   async loadLeaderboard() {
     try {
-      renderLeaderboard(await getTopScores(this.model.currentSetKey));
-    } catch (error) {
+      this.ui.renderLeaderboard(await getTopScores(this.model.currentSetKey));
+    } catch (error: any) {
       console.error('Erreur Supabase (Leaderboard) :', error.message || error);
     }
   }
 
-  update(time, delta) {
+  update(_: any, delta: number) {
     const state = this.state;
     const runtime = this.runtime;
     if (state.gameOver) return;
 
     // Ligne de visée
     if (state.canDrop && runtime.currentItemSprite) {
-      runtime.aimLine.clear();
+      runtime.aimLine!.clear();
       const lineColor = state.isDarkMode ? 0xffffff : 0x000000;
-      runtime.aimLine.lineStyle(1 * SCALE, lineColor, 0.3);
+      runtime.aimLine!.lineStyle(1 * SCALE, lineColor, 0.3);
       const startY = boardY + 60 * SCALE + state.ITEM_TYPES[state.currentTypeIndex].radius;
       for (let y = startY; y < boardY + BOARD_HEIGHT; y += 12 * SCALE) {
-        runtime.aimLine.lineBetween(runtime.currentItemSprite.x, y, runtime.currentItemSprite.x, y + 6 * SCALE);
+        runtime.aimLine!.lineBetween(runtime.currentItemSprite.x, y, runtime.currentItemSprite.x, y + 6 * SCALE);
       }
     }
 
-    const bodies = this.matter.world.getAllBodies();
+    const bodies = this.matter.world.getAllBodies().map(asGameBody);
     let isOverflowing = false;
 
     bodies.forEach((body) => {
@@ -438,11 +464,11 @@ class MergeGameScene extends Phaser.Scene {
     const state = this.state;
     const runtime = this.runtime;
     const typeInfo = state.ITEM_TYPES[state.currentTypeIndex];
-    if (uiElements.sausNameText) uiElements.sausNameText.setText(typeInfo.name);
+    this.ui.elements.sausNameText.setText(typeInfo.name);
 
     if (runtime.nextItemPreview) runtime.nextItemPreview.destroy();
     const nextInfo = state.ITEM_TYPES[state.nextTypeIndex];
-    const previewPos = getNextPreviewPos();
+    const previewPos = this.ui.getNextPreviewPos();
     runtime.nextItemPreview = this.add.image(previewPos.x, previewPos.y, nextInfo.key);
 
     const maxPreviewSize = 50 * SCALE;
@@ -459,7 +485,7 @@ class MergeGameScene extends Phaser.Scene {
 
     const initialX =
       activePointer && activePointer.x > 0 && worldPoint.x >= boardX && worldPoint.x <= boardX + BOARD_WIDTH
-        ? Phaser.Math.Clamp(worldPoint.x, minX, maxX)
+        ? P_Math.Clamp(worldPoint.x, minX, maxX)
         : boardX + BOARD_WIDTH / 2;
 
     runtime.currentItemSprite.x = initialX;
@@ -471,7 +497,8 @@ class MergeGameScene extends Phaser.Scene {
 
     const bodies = this.matter.world
       .getAllBodies()
-      .filter((body) => body?.itemTypeIndex !== undefined)
+      .map(asGameBody)
+      .filter((body) => body.itemTypeIndex !== undefined)
       .map((body) => ({
         typeIndex: body.itemTypeIndex,
         x: body.position.x,
@@ -487,13 +514,13 @@ class MergeGameScene extends Phaser.Scene {
       elapsedTime: this.state.elapsedTime,
       currentTypeIndex: this.state.currentTypeIndex,
       nextTypeIndex: this.state.nextTypeIndex,
-      currentItemX: this.runtime.currentItemSprite?.x,
+      currentItemX: this.runtime.currentItemSprite!.x,
       boardY,
       bodies,
     });
   }
 
-  restoreGame(savedGame) {
+  restoreGame(savedGame: GameSnapshot) {
     const savedBoardY = Number.isFinite(savedGame.boardY) ? savedGame.boardY : 0;
     const boardOffset = boardY - savedBoardY;
     this.state.score = savedGame.score || 0;
@@ -510,17 +537,17 @@ class MergeGameScene extends Phaser.Scene {
     });
 
     this.spawnCurrentItem();
-    if (Number.isFinite(savedGame.currentItemX)) {
+    if (Number.isFinite(savedGame.currentItemX) && this.runtime.currentItemSprite) {
       this.runtime.currentItemSprite.x = savedGame.currentItemX;
     }
     this.updateScoreDisplay();
-    updateTimerDisplay(this.state);
+    this.ui.updateTimerDisplay(this.state);
     if (this.state.elapsedTime > 0) {
-      this.state.startTimer((seconds) => updateTimerDisplay(this.state, seconds));
+      this.state.startTimer((seconds) => this.ui.updateTimerDisplay(this.state, seconds));
     }
   }
 
-  createPreviewSprite(typeInfo) {
+  createPreviewSprite(typeInfo: ItemDefinition) {
     const sprite = this.add.image(0, 0, typeInfo.key);
     const targetSize = typeInfo.radius * 2;
     const maxDim = Math.max(sprite.width, sprite.height);
@@ -528,7 +555,7 @@ class MergeGameScene extends Phaser.Scene {
     return sprite;
   }
 
-  createPhysicsItem(x, y, typeIndex) {
+  createPhysicsItem(x: number, y: number, typeIndex: number): GameBody {
     const state = this.state;
     const typeInfo = state.ITEM_TYPES[typeIndex];
     const targetSize = typeInfo.radius * 2;
@@ -547,7 +574,7 @@ class MergeGameScene extends Phaser.Scene {
     };
 
     if (shapeData) {
-      sprite = this.matter.add.sprite(x, y, typeInfo.key, null, {
+      sprite = this.matter.add.sprite(x, y, typeInfo.key, undefined, {
         shape: shapeData,
         ...commonOptions,
       });
@@ -579,19 +606,21 @@ class MergeGameScene extends Phaser.Scene {
 
       sprite = this.add.image(x, y, typeInfo.key);
       sprite.setDisplaySize(boxWidth, boxHeight);
-      body.gameObject = sprite;
 
-      body.itemTypeIndex = typeIndex;
-      return body;
+      const gameBody = asGameBody(body);
+      gameBody.itemTypeIndex = typeIndex;
+      gameBody.gameObject = sprite;
+      return gameBody;
     }
 
-    sprite.body.itemTypeIndex = typeIndex;
-    sprite.body.gameObject = sprite;
+    const gameBody = asGameBody(sprite.body as MatterJS.BodyType);
+    gameBody.itemTypeIndex = typeIndex;
+    gameBody.gameObject = sprite;
 
-    return sprite.body;
+    return gameBody;
   }
 
-  destroyItemBody(body) {
+  destroyItemBody(body: GameBody) {
     const gameObject = body.gameObject || (body.parent ? body.parent.gameObject : null);
     if (gameObject) {
       gameObject.destroy();
@@ -602,9 +631,9 @@ class MergeGameScene extends Phaser.Scene {
   triggerGameOver() {
     this.model.clearSavedGame();
     if (this.saveInterval) window.clearInterval(this.saveInterval);
-    this.runtime.aimLine.clear();
+    this.runtime.aimLine!.clear();
     this.model.setGameOver();
-    renderGameOver(this, this.model, {
+    this.ui.renderGameOver(this, this.model, {
       onSubmitScore: async (playerName, score) => {
         await submitScore(this.model.currentSetKey, playerName, score);
         await this.loadLeaderboard();
@@ -616,11 +645,11 @@ class MergeGameScene extends Phaser.Scene {
   }
 }
 
-const config = {
-  type: Phaser.AUTO,
+const config: Phaser.Types.Core.GameConfig = {
+  type: AUTO,
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Scale.FIT,
+    autoCenter: Scale.CENTER_BOTH,
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
   },
@@ -628,7 +657,7 @@ const config = {
   physics: {
     default: 'matter',
     matter: {
-      gravity: { y: 1.5 * SCALE },
+      gravity: { x: 0, y: 1.5 * SCALE },
       runner: { fps: 120 },
       positionIterations: 20,
       velocityIterations: 20,
@@ -643,4 +672,4 @@ const config = {
   scene: MergeGameScene,
 };
 
-new Phaser.Game(config);
+new Game(config);

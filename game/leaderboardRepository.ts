@@ -1,7 +1,7 @@
 import { supabaseClient } from '../shared/supabaseClient.js';
-import { getLeaderboardTable } from './sets.js';
+import { getLeaderboardTable, SetKey } from './sets.js';
 
-export async function getTopScores(setKey, limit = 3) {
+export async function getTopScores(setKey: SetKey, limit = 3) {
   const { data, error } = await supabaseClient
     .from(getLeaderboardTable(setKey))
     .select('name, score')
@@ -12,7 +12,7 @@ export async function getTopScores(setKey, limit = 3) {
   return data || [];
 }
 
-export async function submitScore(setKey, name, score) {
+export async function submitScore(setKey: SetKey, name: string, score: number) {
   const { error } = await supabaseClient.from(getLeaderboardTable(setKey)).insert([{ name, score }]);
   if (error) throw error;
 }

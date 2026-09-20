@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { MERGE_SETS } from '../game/sets.js';
 import { supabaseClient } from '../shared/supabaseClient.js'; // Ajuste le chemin selon ton projet
 
@@ -26,7 +28,7 @@ async function fetchAndRenderLeaderboard(setKey) {
       .from(setConfig.leaderboardTable)
       .select('name, score, created_at')
       .order('score', { ascending: false })
-      .limit(10);
+      .limit(20);
 
     if (error) throw error;
 
