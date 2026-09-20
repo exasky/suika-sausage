@@ -13,7 +13,7 @@ import { createGameModel, GameSnapshot } from './model.js';
 import { ItemDefinition, MERGE_SETS } from './sets.js';
 import { UiManager } from './ui.js';
 
-import { AUTO, Game, GameObjects, Math as P_Math, Scale, Scene, Sound, Physics } from 'phaser';
+import { AUTO, Game, GameObjects, Math as P_Math, Scale, Scene, Sound, Physics, Input } from 'phaser';
 
 type GameBody = MatterJS.BodyType & {
   itemTypeIndex: number;
@@ -25,7 +25,7 @@ function asGameBody(body: MatterJS.BodyType): GameBody {
   return body as GameBody;
 }
 
-function getAudioContext(sound: Phaser.Sound.BaseSoundManager): AudioContext | null {
+function getAudioContext(sound: Sound.BaseSoundManager): AudioContext | null {
   return sound instanceof Sound.WebAudioSoundManager ? sound.context : null;
 }
 
@@ -171,7 +171,7 @@ class MergeGameScene extends Scene {
       );
     };
 
-    const updatePosition = (pointer: P_Math.Vector2) => {
+    const updatePosition = (pointer: Input.Pointer) => {
       if (state.canDrop && runtime.currentItemSprite && !state.gameOver) {
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         const currentRadius = state.ITEM_TYPES[state.currentTypeIndex].radius;
@@ -185,7 +185,7 @@ class MergeGameScene extends Scene {
 
     this.input.on(
       'pointerdown',
-      (pointer: P_Math.Vector2) => {
+      (pointer: Input.Pointer) => {
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         if (!isPointerInBoard(worldPoint)) return;
         updatePosition(pointer);
@@ -194,7 +194,7 @@ class MergeGameScene extends Scene {
 
     this.input.on(
       'pointerup',
-      (pointer: P_Math.Vector2) => {
+      (pointer: Input.Pointer) => {
         if (this.isStartChoicePending || this.ignoreNextPointerUp) {
           this.ignoreNextPointerUp = false;
           return;
@@ -451,9 +451,19 @@ class MergeGameScene extends Scene {
     // return Math.floor(Math.random() * 8) + 3; // Pour tester les fusions rapides, on peut limiter aux types 3 à 10
   }
 
+  debugPopAllItems() {
+    const x = boardX + BOARD_WIDTH / 2;
+    const y = boardY + BOARD_HEIGHT / 2;
+
+    this.state.ITEM_TYPES.forEach((value, typeIndex) => {
+      if (!this.state.gameOver) {
+        this.createPhysicsItem(x, y - (typeIndex + value.radius) * 20, typeIndex);
+      }
+    });
+  }
+
   spawnNextItem() {
     const state = this.state;
-    const runtime = this.runtime;
     state.currentTypeIndex = state.nextTypeIndex;
     state.nextTypeIndex = this.getRandomNextIndex();
 
@@ -638,7 +648,8 @@ class MergeGameScene extends Scene {
         await submitScore(this.model.currentSetKey, playerName, score);
         await this.loadLeaderboard();
       },
-      onRestart: () => {
+      onRestart: (pointer: any, localX: any, localY: any, event: Event) => {
+        event.stopPropagation();
         this.scene.restart();
       },
     });

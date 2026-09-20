@@ -1,3 +1,4 @@
+import { Input, GameObjects, Scene } from 'phaser';
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -11,25 +12,25 @@ import {
 import type { GameModelClass } from './model';
 
 export type UiElementCollection = {
-  bgContainer: Phaser.GameObjects.Graphics;
-  boardBg: Phaser.GameObjects.Image | null;
-  uiBg: Phaser.GameObjects.Graphics;
-  leaderBox: Phaser.GameObjects.Graphics;
-  nextBox: Phaser.GameObjects.Graphics;
-  wheelGraphics: Phaser.GameObjects.Graphics;
-  leaderLabel: Phaser.GameObjects.Text;
-  topScoresTexts: Phaser.GameObjects.Text[];
-  nextLabel: Phaser.GameObjects.Text;
-  scoreLabel: Phaser.GameObjects.Text;
-  scoreText: Phaser.GameObjects.Text;
-  highLabel: Phaser.GameObjects.Text;
-  highScoreText: Phaser.GameObjects.Text;
-  sausNameText: Phaser.GameObjects.Text;
-  wheelLabel: Phaser.GameObjects.Text;
-  timerText: Phaser.GameObjects.Text;
-  homeBtnText: Phaser.GameObjects.Text;
-  themeBtnText: Phaser.GameObjects.Text;
-  soundBtnText: Phaser.GameObjects.Text;
+  bgContainer: GameObjects.Graphics;
+  boardBg: GameObjects.Image | null;
+  uiBg: GameObjects.Graphics;
+  leaderBox: GameObjects.Graphics;
+  nextBox: GameObjects.Graphics;
+  wheelGraphics: GameObjects.Graphics;
+  leaderLabel: GameObjects.Text;
+  topScoresTexts: GameObjects.Text[];
+  nextLabel: GameObjects.Text;
+  scoreLabel: GameObjects.Text;
+  scoreText: GameObjects.Text;
+  highLabel: GameObjects.Text;
+  highScoreText: GameObjects.Text;
+  sausNameText: GameObjects.Text;
+  wheelLabel: GameObjects.Text;
+  timerText: GameObjects.Text;
+  homeBtnText: GameObjects.Text;
+  themeBtnText: GameObjects.Text;
+  soundBtnText: GameObjects.Text;
 };
 
 const THEMES = {
@@ -66,7 +67,7 @@ const THEMES = {
 export class UiManager {
   public uiElements: UiElementCollection;
 
-  constructor(scene: Phaser.Scene, model: GameModelClass) {
+  constructor(scene: Scene, model: GameModelClass) {
     this.uiElements = {} as UiElementCollection;
 
     this.uiElements.bgContainer = scene.add.graphics().setDepth(-3);
@@ -244,7 +245,7 @@ export class UiManager {
     this.uiElements.wheelGraphics.fillPath();
   }
 
-  applyTheme(scene: Phaser.Scene, model: GameModelClass) {
+  applyTheme(scene: Scene, model: GameModelClass) {
     document.body.classList.toggle('light-theme', !model.isDarkMode);
     const colors = model.isDarkMode ? THEMES.dark : THEMES.light;
 
@@ -327,7 +328,7 @@ export class UiManager {
   }
 
   renderContinuePrompt(
-    scene: Phaser.Scene,
+    scene: Scene,
     { onContinue, onNewGame }: { onContinue: () => void; onNewGame: () => void },
   ) {
     const overlay = scene.add.graphics().setDepth(2000);
@@ -366,8 +367,8 @@ export class UiManager {
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', callback);
 
-    let continueButton: Phaser.GameObjects.Text;
-    let newGameButton: Phaser.GameObjects.Text;
+    let continueButton: GameObjects.Text;
+    let newGameButton: GameObjects.Text;
     const cleanup = () => {
       overlay.destroy();
       title.destroy();
@@ -388,9 +389,9 @@ export class UiManager {
   }
 
   renderGameOver(
-    scene: Phaser.Scene,
+    scene: Scene,
     model: GameModelClass,
-    { onSubmitScore, onRestart }: { onSubmitScore: (playerName: string, score: number) => Promise<void>; onRestart: () => void },
+    { onSubmitScore, onRestart }: { onSubmitScore: (playerName: string, score: number) => Promise<void>; onRestart: (..._: any) => void },
   ) {
     const overlay = scene.add.graphics();
     overlay.fillStyle(0x000000, 0.5);
@@ -499,7 +500,7 @@ export class UiManager {
       .setInteractive({ useHandCursor: true });
 
     let isSubmitting = false;
-    sendButton.on('pointerdown', async () => {
+    sendButton.on(Input.Events.GAMEOBJECT_POINTER_DOWN, async () => {
       if (isSubmitting) return;
       if (!playerPseudo.trim()) {
         statusText.setColor('#ff6b6b').setText('Veuillez entrer un pseudo !');
@@ -531,7 +532,7 @@ export class UiManager {
       .setOrigin(0.5)
       .setDepth(1001)
       .setInteractive({ useHandCursor: true })
-      .on('pointerdown', onRestart);
+      .on(Input.Events.GAMEOBJECT_POINTER_UP, onRestart);
   }
 }
 
